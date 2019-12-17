@@ -20,6 +20,15 @@
 
 using namespace std;
 
+typedef struct DisplacementDirections
+{
+	int north;
+	int south;
+	int east;
+	int west;
+
+} DisplacementDirections;
+
 //==================================================================================
 //	Function prototypes
 //==================================================================================
@@ -27,7 +36,19 @@ void displayGridPane(void);
 void displayStatePane(void);
 void initializeApplication(void);
 void cleanupGridAndLists(void);
+
 int GenerateRandomValue(int number);
+
+DisplacementDirections FindDisplacementValues(int rowOne, int colOne, int rowTwo, int colTwo);
+
+int FindNorthDisplacement(int rowOne, int rowTwo);
+int FindSouthDisplacement(int rowOne, int rowTwo);
+int FindEastDisplacement(int colOne, int colTwo);
+int FindWestDisplacement(int colOne, int colTwo);
+
+void MoveRobotToBox(int index);
+
+bool CheckProximity(int index);
 
 //==================================================================================
 //	Application-level global variables
@@ -72,12 +93,14 @@ vector<int> boxCols;
 
 vector<int> doorAssignments;
 
+vector<bool> activeStatus;
+vector<bool> unaquiredBox;
+
 //==================================================================================
 //	These are the functions that tie the simulation with the rendering.
 //	Some parts are "don't touch."  Other parts need your intervention
 //	to make sure that access to critical section is properly synchronized
 //==================================================================================
-
 
 void displayGridPane(void)
 {
@@ -263,7 +286,10 @@ void initializeApplication(void)
     
     //will put this inside of the thread function later
 
-
+	//We get the value numBoxes from the command line
+	//loop for numBoxes times in order to generate new coords for each robot, box, and door, and door assignments
+	//I opted to store the values in global vectors as they can be accessed when needed globally and in order to draw the initial grid
+	//that will eventually include the doors, boxes, ect... the values needed to be stored globally to be drawn on the front end display.
     for(int i = 0; i < numBoxes; i++)
     {   
         doorRows.push_back(GenerateRandomValue(numRows));
@@ -274,27 +300,53 @@ void initializeApplication(void)
         robotCols.push_back(GenerateRandomValue(numCols));
         boxCols.push_back(GenerateRandomValue(numCols));
 
+		//will likely be used as a means to determine if the box has reached a door
+		activeStatus.push_back(true);
+		//will be used to determine if we have reached the boxes location and can continue to the door
+		unaquiredBox.push_back(true);
+
         doorAssignments.push_back(i);
+
+		//going to draw each of the boxes individually in this loop as it will work the same as with a seperate loop
+		drawRobotAndBox(i, robotRows[i], robotCols[i], boxRows[i], boxCols[i], doorAssignments[i]);
+		drawDoor(i, doorRows[i], doorCols[i]);
     }
 
-    for (int i=0; i<numBoxes; i++)
+	
+	//Loop to get robot to box
+	for(int index = 0; index < numBoxes; index++)
 	{
-		//	here I would test if the robot thread is still live
-		//						row				column			row			column
-		drawRobotAndBox(i, robotRows[i], robotCols[i], boxRows[i], boxCols[i], doorAssignments[i]);
-	}
 
-	for (int i=0; i<numDoors; i++)
-	{
-		//	here I would test if the robot thread is still alive
-		//			row	     column	
-		drawDoor(i, doorRows[i], doorCols[i]);
-	}
+		std::cout << "Rows Robot : " << robotRows[index] << " Cols Robot: " << robotCols[index] << std::endl;
+		std::cout << "Rows Box : " << boxRows[index] << " Cols Box: " << boxCols[index] << std::endl;
+
+		//row1 row2, col1 col2
+		//this is dependent on what you need to find the displacement to, possibly include a vector that stores
+		//if the robot has aquired its box or not.
+		DisplacementDirections displacements = FindDisplacementValues(robotRows[index], boxRows[index], robotCols[index], boxCols[index]);
+
+		std::cout << "NORTH: " << displacements.north << std::endl;
+		std::cout << "SOUTH: " << displacements.south << std::endl;
+		std::cout << "EAST: " << displacements.east << std::endl;
+		std::cout << "WEST: " << displacements.west << std::endl;
 
 
-    displayGridPane();
-    displayStatePane();
-    
+		MoveRobotToBox(index);
+
+
+
+		//displacement to the box is now found we should only need to move the robot to the box now
+		
+
+		drawRobotAndBox(index, robotRows[index], robotCols[index], boxRows[index], boxCols[index], doorAssignments[index]);
+		drawDoor(index, doorRows[index], doorCols[index]);
+
+		displayGridPane();
+    	displayStatePane();
+
+		std::cout << "Rows Robot : " << robotRows[index] << " Cols Robot: " << robotCols[index] << std::endl;
+		std::cout << "Rows Box : " << boxRows[index] << " Cols Box: " << boxCols[index] << std::endl;
+	}   
 }
 
 int GenerateRandomValue(int number)
@@ -302,4 +354,129 @@ int GenerateRandomValue(int number)
     return rand() % number;
 }
 
+DisplacementDirections FindDisplacementValues(int rowOne, int colOne, int rowTwo, int colTwo)
+{
+	DisplacementDirections displacementDirections;
 
+
+
+	displacementDirections.north = FindNorthDisplacement(rowOne, rowTwo);
+	displacementDirections.south = FindSouthDisplacement(rowOne, rowTwo);
+	displacementDirections.east = FindEastDisplacement(colOne, colTwo);
+	displacementDirections.west = FindWestDisplacement(colOne, colTwo);
+
+	return displacementDirections;
+}
+
+int FindNorthDisplacement(int rowOne, int rowTwo)
+{	
+	int displacement;
+	if(rowOne > rowTwo)
+	{
+		displacement = 0;
+	}
+	else
+	{
+		displacement = rowTwo - rowOne - 1;
+	}
+	return displacement;
+	
+}
+
+int FindSouthDisplacement(int rowOne, int rowTwo)
+{
+	int displacement;
+	if(rowOne > rowTwo)
+	{
+		displacement = rowOne - rowTwo - 1;
+	}
+	else
+	{
+		displacement = 0;
+	}
+	return displacement;
+}
+
+int FindEastDisplacement(int colOne, int colTwo)
+{
+	int displacement;
+	if(colOne > colTwo)
+	{
+		displacement = 0;
+	}
+	else
+	{
+		displacement = colTwo - colOne - 1;
+	}
+	return displacement;
+}
+
+int FindWestDisplacement(int colOne, int colTwo)
+{
+	int displacement;
+	if(colOne > colTwo)
+	{
+		displacement = colOne - colTwo - 1;
+	}
+	else
+	{
+		displacement = 0;
+	}
+	return displacement;
+}
+
+void MoveRobotToBox(int index)
+{
+	if(robotRows[index] > boxRows[index])
+	{
+		robotRows[index]--;
+	}
+	else if(robotRows[index] < boxRows[index])
+	{
+		robotRows[index]++;
+	}
+	if(robotCols[index] > boxCols[index])
+	{
+		robotCols[index]--;
+	}
+	else if(robotCols[index] < boxCols[index])
+	{
+		robotCols[index]++;
+	}
+	displayGridPane();
+    displayStatePane();
+	//recursive calls that will keep moving the robot till we get to the box
+	
+
+	//TODO : Currently this function will run until we are directly on top of the box, we need to make it so it is next to the box.
+	//TODO : Make a function that checks if the robot is NEXT to the box and that will be our new stopping point
+	if(!CheckProximity(index))
+	{
+		MoveRobotToBox(index);
+	}
+}
+
+bool CheckProximity(int index)
+{
+	if(robotRows[index] == boxRows[index]+1 && robotCols[index] == boxCols[index])
+	{
+		return true;
+	}
+	else if(robotRows[index] == boxRows[index]-1 && robotCols[index] == boxCols[index])
+	{
+		return true;
+	}
+	else if(robotRows[index] == boxRows[index] && robotCols[index] == boxCols[index]+1)
+	{
+		return true;
+	}
+	else if(robotRows[index] == boxRows[index] && robotCols[index] == boxCols[index]-1)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+	
+}
