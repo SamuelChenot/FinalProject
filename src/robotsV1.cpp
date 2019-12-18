@@ -37,18 +37,23 @@ void displayStatePane(void);
 void initializeApplication(void);
 void cleanupGridAndLists(void);
 
+
 int GenerateRandomValue(int number);
 
 DisplacementDirections FindDisplacementValues(int rowOne, int colOne, int rowTwo, int colTwo);
 
+
 int FindNorthDisplacement(int rowOne, int rowTwo);
+
 int FindSouthDisplacement(int rowOne, int rowTwo);
+
 int FindEastDisplacement(int colOne, int colTwo);
+
 int FindWestDisplacement(int colOne, int colTwo);
 
-void MoveRobotToBox(int index);
+void MoveRobotToBox(int index, int direction, int loc);
 
-bool CheckProximity(int index);
+bool CheckProximity(int index, int direction, int loc);
 
 //==================================================================================
 //	Application-level global variables
@@ -290,6 +295,7 @@ void initializeApplication(void)
 	//loop for numBoxes times in order to generate new coords for each robot, box, and door, and door assignments
 	//I opted to store the values in global vectors as they can be accessed when needed globally and in order to draw the initial grid
 	//that will eventually include the doors, boxes, ect... the values needed to be stored globally to be drawn on the front end display.
+	//TODO : need to make it so that none of the values here are the same as each other
     for(int i = 0; i < numBoxes; i++)
     {   
         doorRows.push_back(GenerateRandomValue(numRows));
@@ -331,7 +337,27 @@ void initializeApplication(void)
 		std::cout << "WEST: " << displacements.west << std::endl;
 
 
-		MoveRobotToBox(index);
+		vector<int> directions = {displacements.north, displacements.south, displacements.east, displacements.west};
+		int direction;
+		int loc;
+		direction = directions[0];
+		for(unsigned int i = 0; i < directions.size(); i++)
+		{
+			if(direction < directions[i])
+			{
+				direction = directions[i];
+				loc = i;
+			}
+		}
+
+		std::cout << loc << " : " << direction << std::endl;
+
+
+
+		
+
+
+		MoveRobotToBox(index, direction, loc);
 
 
 
@@ -354,30 +380,31 @@ int GenerateRandomValue(int number)
     return rand() % number;
 }
 
-DisplacementDirections FindDisplacementValues(int rowOne, int colOne, int rowTwo, int colTwo)
+//this will be where we get our direction from
+//this function will return a struct with 4 directional values
+//use this function to calculate the movements that our box will need to make
+DisplacementDirections FindDisplacementValues(int rowBox, int colBox, int rowDoor, int colDoor)
 {
 	DisplacementDirections displacementDirections;
 
-
-
-	displacementDirections.north = FindNorthDisplacement(rowOne, rowTwo);
-	displacementDirections.south = FindSouthDisplacement(rowOne, rowTwo);
-	displacementDirections.east = FindEastDisplacement(colOne, colTwo);
-	displacementDirections.west = FindWestDisplacement(colOne, colTwo);
+	displacementDirections.north = FindNorthDisplacement(rowBox, rowDoor);
+	displacementDirections.south = FindSouthDisplacement(rowBox, rowDoor);
+	displacementDirections.east = FindEastDisplacement(colBox, colDoor);
+	displacementDirections.west = FindWestDisplacement(colBox, colDoor);
 
 	return displacementDirections;
 }
 
 int FindNorthDisplacement(int rowOne, int rowTwo)
 {	
-	int displacement;
+	int displacement = 0;
 	if(rowOne > rowTwo)
 	{
 		displacement = 0;
 	}
-	else
-	{
-		displacement = rowTwo - rowOne - 1;
+	else if(rowTwo > 0)
+	{	
+		displacement = rowTwo - rowOne;
 	}
 	return displacement;
 	
@@ -385,47 +412,47 @@ int FindNorthDisplacement(int rowOne, int rowTwo)
 
 int FindSouthDisplacement(int rowOne, int rowTwo)
 {
-	int displacement;
+	int displacement = 0;
 	if(rowOne > rowTwo)
 	{
-		displacement = rowOne - rowTwo - 1;
-	}
-	else
-	{
-		displacement = 0;
+		if(rowOne > 0)
+		{	
+			displacement = rowOne - rowTwo;
+		}
 	}
 	return displacement;
 }
 
 int FindEastDisplacement(int colOne, int colTwo)
 {
-	int displacement;
-	if(colOne > colTwo)
+	int displacement = 0;
+	if(colTwo > colOne)
 	{
-		displacement = 0;
-	}
-	else
-	{
-		displacement = colTwo - colOne - 1;
+		if(colTwo > 0)
+		{	
+			displacement = colTwo - colOne;
+		}
 	}
 	return displacement;
 }
 
 int FindWestDisplacement(int colOne, int colTwo)
 {
-	int displacement;
+	int displacement = 0;
 	if(colOne > colTwo)
 	{
-		displacement = colOne - colTwo - 1;
-	}
-	else
-	{
-		displacement = 0;
+		if(colOne > 0)
+		{
+			displacement = colOne - colTwo;
+		}
 	}
 	return displacement;
 }
 
-void MoveRobotToBox(int index)
+//TODO : I think that using a direction variable we can we the robot to move to the correct position for each directional movement
+//		 so if the direction is NORTH we can have the robot position south and then push NORTH.
+//		 Same goes for any other direction, we just put the robot in the opposite position that we need to push
+void MoveRobotToBox(int index, int direction, int loc)
 {
 	if(robotRows[index] > boxRows[index])
 	{
@@ -443,20 +470,21 @@ void MoveRobotToBox(int index)
 	{
 		robotCols[index]++;
 	}
+	//update the grid to show the newly moved robot
 	displayGridPane();
     displayStatePane();
-	//recursive calls that will keep moving the robot till we get to the box
-	
 
+
+	//recursive calls that will keep moving the robot till we get to the box
 	//TODO : Currently this function will run until we are directly on top of the box, we need to make it so it is next to the box.
 	//TODO : Make a function that checks if the robot is NEXT to the box and that will be our new stopping point
-	if(!CheckProximity(index))
+	if(!CheckProximity(index, direction, loc))
 	{
-		MoveRobotToBox(index);
+		MoveRobotToBox(index, direction, loc);
 	}
 }
 
-bool CheckProximity(int index)
+bool CheckProximity(int index, int direction, int loc)
 {
 	if(robotRows[index] == boxRows[index]+1 && robotCols[index] == boxCols[index])
 	{
@@ -478,5 +506,4 @@ bool CheckProximity(int index)
 	{
 		return false;
 	}
-	
 }
