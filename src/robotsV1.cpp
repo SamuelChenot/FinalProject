@@ -37,23 +37,67 @@ void displayStatePane(void);
 void initializeApplication(void);
 void cleanupGridAndLists(void);
 
-
+/** 
+ * @param number however many cols or rows 
+ * @return 
+**/
 int GenerateRandomValue(int number);
 
+/** Will calculate the distance between two positions based on their row and col positions.
+ * @param rowOne a row value of either a robot, box, or door
+ * @param colOne a col value of either a robot, box, or door
+ * @param rowTwo a row value of either a robot, box, or door
+ * @param colTwo a col value of either a robot, box, or door
+ * @return the four displacement values of each direction, only two values will be non 0.
+**/
 DisplacementDirections FindDisplacementValues(int rowOne, int colOne, int rowTwo, int colTwo);
 
-
+/** Calculates the north displacement value
+ * @param rowOne a row value of either a robot, box, or door
+ * @param rowTwo a row value of either a robot, box, or door
+ * @return the north displacement value
+**/
 int FindNorthDisplacement(int rowOne, int rowTwo);
 
+/** Calculates the south displacement value
+ * @param rowOne a row value of either a robot, box, or door
+ * @param rowTwo a row value of either a robot, box, or door
+ * @return the south displacement value
+**/
 int FindSouthDisplacement(int rowOne, int rowTwo);
 
+/** Calculates the east displacement value
+ * @param colOne a col value of either a robot, box, or door
+ * @param colTwo a col value of either a robot, box, or door
+ * @return the east displacement value
+**/ 
 int FindEastDisplacement(int colOne, int colTwo);
 
+/** Calculates the west displacement value
+ * @param colOne a col value of either a robot, box, or door
+ * @param colTwo a col value of either a robot, box, or door
+ * @return the west displacement value
+**/
 int FindWestDisplacement(int colOne, int colTwo);
 
-void MoveRobotToBox(int index, int direction, int loc);
+/** Moves the specific robot into position to push the box
+ * @param index he current working index box, door, and robot
+**/
+void MoveRobotToBox(int index);
 
-bool CheckProximity(int index, int direction, int loc);
+/** checks if the robot is now in the proximity of the box
+ * @param index he current working index box, door, and robot
+ * @return 
+**/
+bool CheckProximity(int index);
+
+/** repositions the robot into the optimal position for pushing the box
+ * @param index the current working index box, door, and robot
+ * @param newRow the row we need to move to
+ * @param newCol the col we need to move to
+**/
+void RepositionRobot(int index, int newRow, int newCol);
+
 
 //==================================================================================
 //	Application-level global variables
@@ -295,6 +339,7 @@ void initializeApplication(void)
 	//loop for numBoxes times in order to generate new coords for each robot, box, and door, and door assignments
 	//I opted to store the values in global vectors as they can be accessed when needed globally and in order to draw the initial grid
 	//that will eventually include the doors, boxes, ect... the values needed to be stored globally to be drawn on the front end display.
+
 	//TODO : need to make it so that none of the values here are the same as each other
     for(int i = 0; i < numBoxes; i++)
     {   
@@ -341,7 +386,7 @@ void initializeApplication(void)
 		int direction;
 		int loc;
 		direction = directions[0];
-		for(unsigned int i = 0; i < directions.size(); i++)
+		for(unsigned int i = 0; i < 4; i++)
 		{
 			if(direction < directions[i])
 			{
@@ -350,14 +395,39 @@ void initializeApplication(void)
 			}
 		}
 
-		std::cout << loc << " : " << direction << std::endl;
+		std::cout << "LOC: " << loc << std::endl;
 
 
 
 		
 
 
-		MoveRobotToBox(index, direction, loc);
+		MoveRobotToBox(index);
+
+		int newRow, newCol;
+		switch (loc)
+		{
+			case 0:
+				newRow = boxRows[index]-1;
+				newCol = boxCols[index];
+				break;
+			case 1:
+				newRow = boxRows[index]+1;
+				newCol = boxCols[index];
+				break;
+			case 2:
+				newRow = boxRows[index];
+				newCol = boxCols[index]+1;
+				break;
+			case 3:
+				newRow = boxRows[index];
+				newCol = boxCols[index]-1;
+				break;
+			default:
+				break;
+		}
+		//function that will move the robot towards an optimal direction
+		RepositionRobot(index, newRow, newCol);
 
 
 
@@ -375,6 +445,10 @@ void initializeApplication(void)
 	}   
 }
 
+
+/**
+ * Any code under this comment so far has been made by SAM, if you need to ask a question about it msg me.
+ */
 int GenerateRandomValue(int number)
 {
     return rand() % number;
@@ -395,6 +469,7 @@ DisplacementDirections FindDisplacementValues(int rowBox, int colBox, int rowDoo
 	return displacementDirections;
 }
 
+//finds the numbers of tiles north of a position rowOne is of rowTwo
 int FindNorthDisplacement(int rowOne, int rowTwo)
 {	
 	int displacement = 0;
@@ -410,6 +485,7 @@ int FindNorthDisplacement(int rowOne, int rowTwo)
 	
 }
 
+//finds the numbers of tiles south of a position rowOne is of rowTwo
 int FindSouthDisplacement(int rowOne, int rowTwo)
 {
 	int displacement = 0;
@@ -423,6 +499,7 @@ int FindSouthDisplacement(int rowOne, int rowTwo)
 	return displacement;
 }
 
+//finds the numbers of tiles east of a position colOne is of colTwo
 int FindEastDisplacement(int colOne, int colTwo)
 {
 	int displacement = 0;
@@ -436,6 +513,7 @@ int FindEastDisplacement(int colOne, int colTwo)
 	return displacement;
 }
 
+//finds the numbers of tiles west of a position colOne is of colTwo
 int FindWestDisplacement(int colOne, int colTwo)
 {
 	int displacement = 0;
@@ -452,20 +530,24 @@ int FindWestDisplacement(int colOne, int colTwo)
 //TODO : I think that using a direction variable we can we the robot to move to the correct position for each directional movement
 //		 so if the direction is NORTH we can have the robot position south and then push NORTH.
 //		 Same goes for any other direction, we just put the robot in the opposite position that we need to push
-void MoveRobotToBox(int index, int direction, int loc)
+void MoveRobotToBox(int index)
 {
+	//checks if the row of the robot is still larger than the one of the box, and will decrement the position of the robot
 	if(robotRows[index] > boxRows[index])
 	{
 		robotRows[index]--;
 	}
+	//checks if the row of the box is still larger than the one of the robot, and will increment the position of the robot
 	else if(robotRows[index] < boxRows[index])
 	{
 		robotRows[index]++;
 	}
+	//checks if the cols of the robot is still larger than the one of the box, and will decrement the position of the robot
 	if(robotCols[index] > boxCols[index])
 	{
 		robotCols[index]--;
 	}
+	//checks if the cols of the box is still larger than the one of the robot, and will increment the position of the robot
 	else if(robotCols[index] < boxCols[index])
 	{
 		robotCols[index]++;
@@ -478,13 +560,15 @@ void MoveRobotToBox(int index, int direction, int loc)
 	//recursive calls that will keep moving the robot till we get to the box
 	//TODO : Currently this function will run until we are directly on top of the box, we need to make it so it is next to the box.
 	//TODO : Make a function that checks if the robot is NEXT to the box and that will be our new stopping point
-	if(!CheckProximity(index, direction, loc))
+	if(!CheckProximity(index))
 	{
-		MoveRobotToBox(index, direction, loc);
+		//if for whatever reason the robot is not directly next to the box, we will call this function again until it is.
+		MoveRobotToBox(index);
 	}
 }
 
-bool CheckProximity(int index, int direction, int loc)
+//function checks if the robot is one grid space NORTH, SOUTH, EAST, or WEST of the box
+bool CheckProximity(int index)
 {
 	if(robotRows[index] == boxRows[index]+1 && robotCols[index] == boxCols[index])
 	{
@@ -505,5 +589,35 @@ bool CheckProximity(int index, int direction, int loc)
 	else
 	{
 		return false;
+	}
+}
+
+//loc is 0, 1, 2 ,3 
+//		 N, S, E, W
+void RepositionRobot(int index, int newRow, int newCol)
+{
+	if(robotRows[index] > newRow)
+	{
+		robotRows[index]--;
+	}
+	//checks if the row of the box is still larger than the one of the robot, and will increment the position of the robot
+	else if(robotRows[index] < newRow)
+	{
+		robotRows[index]++;
+	}
+	//checks if the cols of the robot is still larger than the one of the box, and will decrement the position of the robot
+	if(robotCols[index] > newCol)
+	{
+		robotCols[index]--;
+	}
+	//checks if the cols of the box is still larger than the one of the robot, and will increment the position of the robot
+	else if(robotCols[index] < newCol)
+	{
+		robotCols[index]++;
+	}
+	if(!CheckProximity(index))
+	{
+		//if for whatever reason the robot is not directly next to the box, we will call this function again until it is.
+		RepositionRobot(index, newRow, newCol);
 	}
 }
