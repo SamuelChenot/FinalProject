@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+src/robotsV1
+src/robots
