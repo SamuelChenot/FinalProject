@@ -482,7 +482,6 @@ int FindNorthDisplacement(int rowOne, int rowTwo)
 		displacement = rowTwo - rowOne;
 	}
 	return displacement;
-	
 }
 
 //finds the numbers of tiles south of a position rowOne is of rowTwo
@@ -596,22 +595,22 @@ bool CheckProximity(int index)
 //		 N, S, E, W
 void RepositionRobot(int index, int newRow, int newCol)
 {
-	if(robotRows[index] > newRow)
+	if(robotRows[index] > newRow && robotRows[index]-1 > 0 && robotRows[index]-1 != boxRows[index])
 	{
 		robotRows[index]--;
 	}
 	//checks if the row of the box is still larger than the one of the robot, and will increment the position of the robot
-	else if(robotRows[index] < newRow)
+	else if(robotRows[index] < newRow && robotCols[index]+1 < numRows-1 && robotRows[index]-1 != boxRows[index])
 	{
 		robotRows[index]++;
 	}
 	//checks if the cols of the robot is still larger than the one of the box, and will decrement the position of the robot
-	if(robotCols[index] > newCol)
+	if(robotCols[index] > newCol && robotCols[index]-1 > 0 && robotCols[index]-1 != boxRows[index])
 	{
 		robotCols[index]--;
 	}
 	//checks if the cols of the box is still larger than the one of the robot, and will increment the position of the robot
-	else if(robotCols[index] < newCol)
+	else if(robotCols[index] < newCol && robotCols[index]+1 < numCols-1 && robotCols[index]+1 != boxRows[index])
 	{
 		robotCols[index]++;
 	}
