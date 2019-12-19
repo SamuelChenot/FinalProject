@@ -328,7 +328,7 @@ void initializeApplication(void)
         {
 			if(!atBox)
 			{	
-				Direction Direction = DetermineDirection(index);
+				Direction direction = DetermineDirection(i);
 				MoveRobot(i, direction);
 			}
 			else
