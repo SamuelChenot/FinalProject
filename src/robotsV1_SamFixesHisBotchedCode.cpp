@@ -435,3 +435,66 @@ AssignmentInfo MakeAssignment()
 
     return assignmentInfo;
 }
+
+
+
+
+
+
+
+////////////////////////////////////////////////
+
+void moveBox(point robot, point box, point door)
+{
+	point distanceToMoveBox = displacementToDoor(box, door);
+
+	Direction orientationX = findXOrientation(distanceToMoveBox.x);
+	if(orientationX = EAST)
+		;// move robot to box.x - 1 (Note does not account for boxes against world edge)
+	if(orientationX = WEST)
+		;// move robot to box.x + 1 (Note does not account for boxes against world edge)
+	// move robot to box.y
+	// set robot Direction = orientationX
+	// push box distanceToMoveBox.x times
+	
+	Direction orientationY = findYOrientation(distanceToMoveBox.y);
+	if(orientationY = SOUTH)
+		;// move robot to box.y + 1 (Note does not account for boxes against world edge)
+	if(orientationY = NORTH)
+		;// move robot to box.y - 1 (Note does not account for boxes against world edge)
+	// move robot to box.x
+	// set robot Direction = orientationY
+	// push bot distanceToMoveBox.y times 		
+}
+
+Direction findXOrientation(int x)
+{
+	if(x > 0) return EAST;
+	else if(x < 0) return WEST;
+	
+	return;
+}
+
+Direction findYOrientation(int y)
+{
+	if(y > 0) return SOUTH;
+	else if(y < 0) return NORTH;
+	
+	return;
+}
+
+/** Returns the x,y displacements required to move a box to a door
+ * @param : x, y coordinates of box to be checked 
+ * @param : x, y coordinates of door to be checked 
+ */
+point displacementToDoor(point obj, point door)
+{
+	int xdisplacement = door.x-box.x;
+	int ydisplacement = door.y-box.y;
+
+	point returnPoint;
+	returnPoint.x = xdisplacement;
+	returnPoint.y = ydisplacement;
+
+	return returnPoint;
+}
