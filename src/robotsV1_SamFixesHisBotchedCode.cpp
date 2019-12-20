@@ -39,16 +39,16 @@ typedef struct RobotInfo{
 
 	pthread_t	threadID;
 	unsigned int index;
-	
+
 	Direction moveDirection;
     Direction pushDirection;
     bool end;
-	
+
 	Point location;
-	
+
     BoxInfo box;
     DoorInfo door;
-    
+
 } RobotInfo;
 
 //==================================================================================
@@ -61,9 +61,9 @@ void cleanupGridAndLists(void);
 
 AssignmentInfo MakeAssignment();
 
-/** 
- * @param number however many cols or rows 
- * @return 
+/**
+ * @param number however many cols or rows
+ * @return
 **/
 int GenerateRandomValue(int number);
 
@@ -123,7 +123,7 @@ vector<DoorInfo> doors;
 //==================================================================================
 
 void displayGridPane(void)
-{	
+{
 	//	This is OpenGL/glut magic.  Don't touch
 	glutSetWindow(gSubwindow[GRID_PANE]);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -132,23 +132,23 @@ void displayGridPane(void)
 
 	glTranslatef(0, GRID_PANE_HEIGHT, 0);
 	glScalef(1.f, -1.f, 1.f);
-	
+
     //can touch
 
-    
+
 
 	for (int i=0; i<numBoxes; i++)
 	{
 		//	here I would test if the robot thread is still live
 		//				   row		 column	   row	   column
-		drawRobotAndBox(i, robots[i].location.y, robots[i].location.x, 
+		drawRobotAndBox(i, robots[i].location.y, robots[i].location.x,
 						boxes[i].location.y, boxes[i].location.x, i);
 	}
 
 	for (int i=0; i<numDoors; i++)
 	{
 		//	here I would test if the robot thread is still alive
-		//				row				column	
+		//				row				column
 		drawDoor(i, doors[i].location.y, doors[i].location.x);
 	}
 
@@ -158,7 +158,7 @@ void displayGridPane(void)
 
 	//	This is OpenGL/glut magic.  Don't touch
 	glutSwapBuffers();
-	
+
 	glutSetWindow(gMainWindow);
 }
 
@@ -188,13 +188,13 @@ void displayStatePane(void)
 	//	You *must* synchronize this call.
 	//
 	//---------------------------------------------------------
-    
+
 	drawState(numMessages, message);
-	
-	
+
+
 	//	This is OpenGL/glut magic.  Don't touch
 	glutSwapBuffers();
-	
+
 	glutSetWindow(gMainWindow);
 }
 
@@ -206,7 +206,7 @@ void speedupRobots(void)
 {
 	//	decrease sleep time by 20%, but don't get too small
 	int newSleepTime = (8 * robotSleepTime) / 10;
-	
+
 	if (newSleepTime > MIN_SLEEP_TIME)
 	{
 		robotSleepTime = newSleepTime;
@@ -245,18 +245,18 @@ int main(int argc, char** argv)
 	//	function because that function passes them to glutInit, the required call
 	//	to the initialization of the glut library.
 	initializeFrontEnd(argc, argv, displayGridPane, displayStatePane);
-	
+
 	//	Now we can do application-level initialization
 	initializeApplication();
 
 	//	Now we enter the main loop of the program and to a large extend
-	//	"lose control" over its execution.  The callback functions that 
+	//	"lose control" over its execution.  The callback functions that
 	//	we set up earlier will be called when the corresponding event
 	//	occurs
 	glutMainLoop();
-	
+
 	cleanupGridAndLists();
-	
+
 	//	This will probably never be executed (the exit point will be in one of the
 	//	call back functions).
 	return 0;
@@ -290,12 +290,12 @@ void initializeApplication(void){
 	grid = (int**) malloc(numRows * sizeof(int*));
 	for (int i=0; i<numRows; i++)
 		grid[i] = (int*) malloc(numCols * sizeof(int));
-	
+
 	message = (char**) malloc(MAX_NUM_MESSAGES*sizeof(char*));
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		message[k] = (char*) malloc((MAX_LENGTH_MESSAGE+1)*sizeof(char));
-		
-	
+
+
 	//	seed the pseudo-random generator
 	startTime = time(NULL);
 	srand((unsigned int) startTime);
@@ -303,7 +303,7 @@ void initializeApplication(void){
 	//	normally, here I would initialize the location of my doors, boxes,
 	//	and robots, and create threads (not necessarily in that order).
 	//	For the handout I have nothing to do.
-    
+
     //will put this inside of the thread function later
 
 	//We get the value numBoxes from the command line
@@ -313,47 +313,47 @@ void initializeApplication(void){
 
 	//TODO : need to make it so that none of the values here are the same as each other
 	int numRobots = numBoxes;
-	
+
 	for(int i = 0; i < numDoors; ++i){
 		doors.push_back(createDoor());
 	}
-	
+
 	for (int i = 0; i < numBoxes; i++){
 		boxes.push_back(createBox());
 	}
-	
-	
+
+
 	for (int i = 0; i < numRobots; i++){
-	
+
 		robots.push_back(createRobot(i));
-		
+
 		robotThreadFunc(robots[i]);
     }
 }
 
 DoorInfo createDoor(){
 	DoorInfo door;
-	
+
 	int doorX, doorY;
-	
+
 	// TODO random door location.
-	
+
 	door.location = {doorX, doorY};
-	
+
 	return door;
 }
 
 BoxInfo createBox(){
-	
+
 	// TODO create boxes
-	
+
 	return NULL;
 }
 
 RobotInfo createRobot(){
-	
+
 	// TODO create the robot
-	
+
 	return NULL;
 }
 
@@ -365,35 +365,35 @@ int GenerateRandomValue(int start, int end){
 }
 
 void* robotThreadFunc(RobotInfo info){
-	
+
 	while(!boxAtEnd()){
-		
+
 		info.pushDirection = chooseNextPush(info);
-		
+
 		while(!ableToPush(info)){
 			info.moveDirection = chooseMovement(info);
-			
+
 			move(info);
 		}
-		
+
 		push(info);
 	}
-	
+
 	info.done = true;
-	
+
 	return nullptr;
 }
 
 bool boxAtEnd(BoxInfo box, DoorInfo door){
 	Point displacement = displacementBetweenPoints(box.location, door.location);
-	
+
 	return (displacement.x == 0) && (displacement.y == 0);
 }
 
 
 /** Returns the x,y displacements required to move a box to a door
- * @param : x, y coordinates of box to be checked 
- * @param : x, y coordinates of door to be checked 
+ * @param : x, y coordinates of box to be checked
+ * @param : x, y coordinates of door to be checked
  */
 Point displacementBetweenPoints(Point p1, Point p2)
 {
@@ -421,7 +421,7 @@ Direction findXOrientation(int x)
 {
 	if(x > 0) return EAST;
 	else if(x < 0) return WEST;
-	
+
 	return;
 }
 
@@ -429,11 +429,11 @@ Direction findYOrientation(int y)
 {
 	if(y > 0) return SOUTH;
 	else if(y < 0) return NORTH;
-	
+
 	return;
 }
 
-Direction chooseMovement(RobotInfo info){	
+Direction chooseMovement(RobotInfo info){
 
 	// TODO choose movement correctly.
 	if(orientationX = EAST)
@@ -443,19 +443,51 @@ Direction chooseMovement(RobotInfo info){
 	// move robot to box.y
 	// set robot Direction = orientationX
 	// push box distanceToMoveBox.x times
-	
-	
+
+
 	if(orientationY = SOUTH)
 		;// move robot to box.y + 1 (Note does not account for boxes against world edge)
 	if(orientationY = NORTH)
 		;// move robot to box.y - 1 (Note does not account for boxes against world edge)
 	// move robot to box.x
 	// set robot Direction = orientationY
-	// push bot distanceToMoveBox.y times 		
+	// push bot distanceToMoveBox.y times
 }
 
 bool ableToPush(RobotInfo info){
 	// TODO check if in position to push box.
+	switch(info.direction)
+	{
+		case NORTH:
+			//If the box is not on the top row and the robot is below it
+			if(info.box.location.y != numRows -1 && info.location.y +1 == info.box.location.y)
+			{
+				return true;
+			}
+			break;
+		case EAST:
+			//If the box is not on the right side and the robot is to the left of it
+			if(info.box.location.x != numCols -1 && info.location.x +1 == info.box.location.x)
+			{
+				return true;
+			}
+			break;
+		case SOUTH:
+			//If the box is not on the top row and the robot is below it
+			if(info.box.location.y != 0 && info.location.y -1 == info.box.location.y)
+			{
+				return true;
+			}
+			break;
+		case WEST:
+			//If the box is not on the left side and the robot is to the right of it
+			if(info.box.location.x != 0 && info.location.x -1 == info.box.location.x)
+			{
+				return true;
+			}
+			break;
+	}
+	return false;
 }
 
 void move(RobotInfo info){
@@ -489,7 +521,7 @@ void MoveRobot(int index, Direction direction)
 	default:
 		break;
 	}
-	
+
 	//update the grid to show the newly moved robot
 	displayGridPane();
     displayStatePane();
@@ -541,11 +573,9 @@ AssignmentInfo MakeAssignment()
 
     assignmentInfo.robotCol = GenerateRandomValue(numCols);
     assignmentInfo.robotRow = GenerateRandomValue(numRows);
-    
+
     assignmentInfo.door.col = GenerateRandomValue(numCols);
     assignmentInfo.door.row = GenerateRandomValue(numRows);
 
     return assignmentInfo;
 }
-
-
