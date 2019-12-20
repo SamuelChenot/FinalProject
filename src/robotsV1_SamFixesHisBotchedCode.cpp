@@ -313,167 +313,11 @@ void initializeApplication(void){
 
 	//TODO : need to make it so that none of the values here are the same as each other
 	int numRobots = numBoxes;
-	DoorInfo previousDoor;
-	for(int i = 0; i < numDoors; ++i){
-		DoorInfo currentDoor = createDoor();
-		if(currentDoor.location.x != previousDoor.location.x && currentDoor.location.y != previousDoor.location.y)
-		{
-			doors.push_back(currentDoor);
-		}
-		else
-		{
-			while(currentDoor.location.x == previousDoor.location.x && currentDoor.location.y == previousDoor.location.y)
-			{
-				currentDoor = createDoor();
-			}
-			doors.push_back(currentDoor);
-		}
-		previousDoor = currentDoor;	
-	}
-
-	BoxInfo previousBox;
-	for (int i = 0; i < numBoxes; i++){
-		BoxInfo currentBox;
-		currentBox = createBox();
-		bool safe = false;
-		if(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
-		{
-			while (!safe)
-			{
-				for(int i = 0; i < numDoors; i++)
-				{
-					if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
-					doors[i].location.x != previousBox.location.x 
-					&& doors[i].location.y != previousBox.location.y)
-					{
-						safe = true;
-					}
-					else
-					{
-						safe = false;
-					}	
-				}
-			}
-			if(safe)
-			{
-				boxes.push_back(currentBox);
-			}
-		}
-		else
-		{
-			while(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
-			{
-				currentBox = createBox();
-				while (!safe)
-				{
-					for(int i = 0; i < numDoors; i++)
-					{
-						if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
-						doors[i].location.x != previousBox.location.x 
-						&& doors[i].location.y != previousBox.location.y)
-						{
-							safe = true;
-						}
-						else
-						{
-							safe = true;
-						}
-					}
-				}
-				if(safe)
-				{
-					boxes.push_back(currentBox);
-				}
-			}
-		}
-		previousBox = currentBox;
-	}
 	
-	RobotInfo previousRobot;
-	for (int i = 0; i < numRobots; i++){
-		RobotInfo currentRobot;
-		currentRobot = createRobot(i);
-		bool safe = false;
-		if(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
-		{
-			while (!safe)
-			{
-				for(int i = 0; i < numDoors; i++)
-				{
-					if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
-					doors[i].location.x != previousRobot.location.x 
-					&& doors[i].location.y != previousRobot.location.y)
-					{
-						safe = true;
-					}
-					else
-					{
-						safe = false;
-					}	
-				}
-				for(int i = 0; i < numBoxes; i++)
-				{
-					if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
-					boxes[i].location.x != previousRobot.location.x 
-					&& boxes[i].location.y != previousRobot.location.y)
-					{
-						safe = true;
-					}
-					else
-					{
-						safe = false;
-					}	
-				}
-			}
-			if(safe)
-			{
-				robots.push_back(currentRobot);
-			}
-		}
-		else
-		{
-			while(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
-			{
-				currentRobot = createRobot(i);
-				while (!safe)
-				{
-					for(int i = 0; i < numDoors; i++)
-					{
-						if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
-						doors[i].location.x != previousRobot.location.x 
-						&& doors[i].location.y != previousRobot.location.y)
-						{
-							safe = true;
-						}
-						else
-						{
-							safe = true;
-						}
-					}
-					for(int i = 0; i < numBoxes; i++)
-					{
-						if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
-						boxes[i].location.x != previousRobot.location.x 
-						&& boxes[i].location.y != previousRobot.location.y)
-						{
-							safe = true;
-						}
-						else
-						{
-							safe = false;
-						}	
-					}
-				}
-				if(safe)
-				{
-					robots.push_back(currentRobot);
-				}
-			}
-		}
-		previousRobot = currentRobot;
-		
-		robotThreadFunc(robots[i]);
-    }
+	BuildDoors();
+	BuildBoxes();
+	BuildRobots(numRobots);
+	
 }
 
 DoorInfo createDoor(){
@@ -630,6 +474,177 @@ void move(RobotInfo info){
 
 void push(RobotInfo info){
 	// TODO push
+}
+
+void BuildRobots(int numRobots)
+{
+	RobotInfo previousRobot;
+	for (int i = 0; i < numRobots; i++){
+		RobotInfo currentRobot;
+		currentRobot = createRobot(i);
+		bool safe = false;
+		if(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
+		{
+			while (!safe)
+			{
+				for(int i = 0; i < numDoors; i++)
+				{
+					if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
+					doors[i].location.x != previousRobot.location.x 
+					&& doors[i].location.y != previousRobot.location.y)
+					{
+						safe = true;
+					}
+					else
+					{
+						safe = false;
+					}	
+				}
+				for(int i = 0; i < numBoxes; i++)
+				{
+					if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
+					boxes[i].location.x != previousRobot.location.x 
+					&& boxes[i].location.y != previousRobot.location.y)
+					{
+						safe = true;
+					}
+					else
+					{
+						safe = false;
+					}	
+				}
+			}
+			if(safe)
+			{
+				robots.push_back(currentRobot);
+			}
+		}
+		else
+		{
+			while(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
+			{
+				currentRobot = createRobot(i);
+				while (!safe)
+				{
+					for(int i = 0; i < numDoors; i++)
+					{
+						if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
+						doors[i].location.x != previousRobot.location.x 
+						&& doors[i].location.y != previousRobot.location.y)
+						{
+							safe = true;
+						}
+						else
+						{
+							safe = true;
+						}
+					}
+					for(int i = 0; i < numBoxes; i++)
+					{
+						if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
+						boxes[i].location.x != previousRobot.location.x 
+						&& boxes[i].location.y != previousRobot.location.y)
+						{
+							safe = true;
+						}
+						else
+						{
+							safe = false;
+						}	
+					}
+				}
+				if(safe)
+				{
+					robots.push_back(currentRobot);
+				}
+			}
+		}
+		previousRobot = currentRobot;
+		
+		robotThreadFunc(robots[i]);
+    }
+}
+
+void BuildBoxes()
+{
+	BoxInfo previousBox;
+	for (int i = 0; i < numBoxes; i++){
+		BoxInfo currentBox;
+		currentBox = createBox();
+		bool safe = false;
+		if(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
+		{
+			while (!safe)
+			{
+				for(int i = 0; i < numDoors; i++)
+				{
+					if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
+					doors[i].location.x != previousBox.location.x 
+					&& doors[i].location.y != previousBox.location.y)
+					{
+						safe = true;
+					}
+					else
+					{
+						safe = false;
+					}	
+				}
+			}
+			if(safe)
+			{
+				boxes.push_back(currentBox);
+			}
+		}
+		else
+		{
+			while(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
+			{
+				currentBox = createBox();
+				while (!safe)
+				{
+					for(int i = 0; i < numDoors; i++)
+					{
+						if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
+						doors[i].location.x != previousBox.location.x 
+						&& doors[i].location.y != previousBox.location.y)
+						{
+							safe = true;
+						}
+						else
+						{
+							safe = true;
+						}
+					}
+				}
+				if(safe)
+				{
+					boxes.push_back(currentBox);
+				}
+			}
+		}
+		previousBox = currentBox;
+	}
+}
+
+void BuildDoors()
+{
+	DoorInfo previousDoor;
+	for(int i = 0; i < numDoors; ++i){
+		DoorInfo currentDoor = createDoor();
+		if(currentDoor.location.x != previousDoor.location.x && currentDoor.location.y != previousDoor.location.y)
+		{
+			doors.push_back(currentDoor);
+		}
+		else
+		{
+			while(currentDoor.location.x == previousDoor.location.x && currentDoor.location.y == previousDoor.location.y)
+			{
+				currentDoor = createDoor();
+			}
+			doors.push_back(currentDoor);
+		}
+		previousDoor = currentDoor;	
+	}
 }
 
 //_______________________________________________________________________________________
