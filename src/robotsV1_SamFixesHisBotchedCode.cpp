@@ -313,13 +313,80 @@ void initializeApplication(void){
 
 	//TODO : need to make it so that none of the values here are the same as each other
 	int numRobots = numBoxes;
-	
+	DoorInfo previousDoor;
 	for(int i = 0; i < numDoors; ++i){
-		doors.push_back(createDoor());
+		DoorInfo currentDoor = createDoor();
+		if(currentDoor.location.x != previousDoor.location.x && currentDoor.location.y != previousDoor.location.y)
+		{
+			doors.push_back(currentDoor);
+		}
+		else
+		{
+			while(currentDoor.location.x == previousDoor.location.x && currentDoor.location.y == previousDoor.location.y)
+			{
+				currentDoor = createDoor();
+			}
+			doors.push_back(currentDoor);
+		}
+		previousDoor = currentDoor;	
 	}
-	
+
+	BoxInfo previousBox;
 	for (int i = 0; i < numBoxes; i++){
-		boxes.push_back(createBox());
+		BoxInfo currentBox;
+		currentBox = createBox();
+		bool safe = false;
+		if(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
+		{
+			while (!safe)
+			{
+				for(int i = 0; i < numDoors; i++)
+				{
+					if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
+					doors[i].location.x != previousBox.location.x 
+					&& doors[i].location.y != previousBox.location.y)
+					{
+						safe = true;
+					}
+					else
+					{
+						safe = false;
+					}	
+				}
+			}
+			if(safe)
+			{
+				boxes.push_back(currentBox);
+			}
+			previousBox = currentBox;
+		}
+		else
+		{
+			while(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
+			{
+				currentBox = createBox();
+				while (!safe)
+				{
+					for(int i = 0; i < numDoors; i++)
+					{
+						if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
+						doors[i].location.x != previousBox.location.x 
+						&& doors[i].location.y != previousBox.location.y)
+						{
+							safe = true;
+						}
+						else
+						{
+							safe = true;
+						}
+					}
+				}
+				if(safe)
+				{
+					boxes.push_back(currentBox);
+				}
+			}
+		}
 	}
 	
 	
@@ -348,17 +415,34 @@ BoxInfo createBox(){
 	
 	BoxInfo box;
 
-	
+	int boxX, boxY;
+
+	boxX = GenerateRandomValue(numCols);
+	boxY = GenerateRandomValue(numRows);
+
+	box.location = {boxX, boxY};
+
 	// TODO create boxes
 	
-	return NULL;
+	return box;
 }
 
-RobotInfo createRobot(){
+RobotInfo createRobot(int index){
+
+	RobotInfo robot;
+
+	int robotX, robotY;
+
+	robotX = GenerateRandomValue(numCols);
+	robotY = GenerateRandomValue(numRows);
+
+	robot.end = false;
+	robot.index = index;
+	robot.location = {robotX, robotY};
 	
 	// TODO create the robot
 	
-	return NULL;
+	return robot;
 }
 
 /** Function to generate a random number between start and end INCLUSIVELY
@@ -401,8 +485,8 @@ bool boxAtEnd(BoxInfo box, DoorInfo door){
  */
 Point displacementBetweenPoints(Point p1, Point p2)
 {
-	int xdisplacement = p1.x-p2.x;
-	int ydisplacement = p1.y-p2.y;
+	int xDisplacement = p1.x-p2.x;
+	int yDisplacement = p1.y-p2.y;
 
 	Point returnPoint = {xDisplacement, yDisplacement};
 
@@ -440,18 +524,18 @@ Direction findYOrientation(int y)
 Direction chooseMovement(RobotInfo info){	
 
 	// TODO choose movement correctly.
-	if(orientationX = EAST)
+	if(info.pushDirection = EAST)
 		;// move robot to box.x - 1 (Note does not account for boxes against world edge)
-	if(orientationX = WEST)
+	if(info.pushDirection = WEST)
 		;// move robot to box.x + 1 (Note does not account for boxes against world edge)
 	// move robot to box.y
 	// set robot Direction = orientationX
 	// push box distanceToMoveBox.x times
 	
 	
-	if(orientationY = SOUTH)
+	if(info.pushDirection = SOUTH)
 		;// move robot to box.y + 1 (Note does not account for boxes against world edge)
-	if(orientationY = NORTH)
+	if(info.pushDirection = NORTH)
 		;// move robot to box.y - 1 (Note does not account for boxes against world edge)
 	// move robot to box.x
 	// set robot Direction = orientationY
@@ -534,22 +618,22 @@ bool CheckProximityOfRobotToBox(int index)
 	}
 }
 
-AssignmentInfo MakeAssignment()
-{
-    AssignmentInfo assignmentInfo;
-
-    assignmentInfo.assignment = GenerateRandomValue(3);
-
-    assignmentInfo.box.col = GenerateRandomValue(numCols);
-    assignmentInfo.box.row = GenerateRandomValue(numRows);
-
-    assignmentInfo.robotCol = GenerateRandomValue(numCols);
-    assignmentInfo.robotRow = GenerateRandomValue(numRows);
-    
-    assignmentInfo.door.col = GenerateRandomValue(numCols);
-    assignmentInfo.door.row = GenerateRandomValue(numRows);
-
-    return assignmentInfo;
-}
+//AssignmentInfo MakeAssignment()
+//{
+//  AssignmentInfo assignmentInfo;
+//
+//  assignmentInfo.assignment = GenerateRandomValue(3);
+//
+//    assignmentInfo.box.col = GenerateRandomValue(numCols);
+//    assignmentInfo.box.row = GenerateRandomValue(numRows);
+//
+//    assignmentInfo.robotCol = GenerateRandomValue(numCols);
+//    assignmentInfo.robotRow = GenerateRandomValue(numRows);
+//    
+//    assignmentInfo.door.col = GenerateRandomValue(numCols);
+//    assignmentInfo.door.row = GenerateRandomValue(numRows);
+//
+//   return assignmentInfo;
+//}
 
 
