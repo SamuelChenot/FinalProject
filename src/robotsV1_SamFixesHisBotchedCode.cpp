@@ -100,6 +100,12 @@ void move(RobotInfo info);
 void push(RobotInfo info);
 
 
+void MoveRobot(int index, Direction direction);
+
+bool CheckProximityOfRobotToBox(int index);
+
+Direction DetermineDirection(int index);
+
 //==================================================================================
 //	Application-level global variables
 //==================================================================================
@@ -506,23 +512,33 @@ Direction findYOrientation(int y)
 */
 Direction chooseMovement(RobotInfo info){	
 
-	// TODO choose movement correctly.
-	if(info.pushDirection = EAST)
-		;// move robot to box.x - 1 (Note does not account for boxes against world edge)
-	if(info.pushDirection = WEST)
-		;// move robot to box.x + 1 (Note does not account for boxes against world edge)
-	// move robot to box.y
-	// set robot Direction = orientationX
-	// push box distanceToMoveBox.x times
-	
-	
-	if(info.pushDirection = SOUTH)
-		;// move robot to box.y + 1 (Note does not account for boxes against world edge)
-	if(info.pushDirection = NORTH)
-		;// move robot to box.y - 1 (Note does not account for boxes against world edge)
-	// move robot to box.x
-	// set robot Direction = orientationY
-	// push bot distanceToMoveBox.y times 		
+	switch(info.pushDirection)
+	{
+        case NORTH:
+            if(info.location.y <= info.box.location.y) {
+                return SOUTH;
+            }else{
+                return NORTH;
+            }
+        case SOUTH:
+            if(info.location.y >= info.box.location.y){
+                return NORTH;
+            }else {
+                return SOUTH;
+            }
+        case EAST:
+            if(info.location.x >= info.box.location.x){
+                return WEST;
+            }else{
+                return EAST;
+            }
+        case WEST:
+            if(info.location.x <= info.box.location.x){
+                return EAST;
+            }else{
+                return WEST;
+            }
+	}
 }
 
 /** A function that checks if the robot is in place to push the box.
@@ -537,14 +553,55 @@ bool ableToPush(RobotInfo info){
 	@param info The robot info struct to be moved.
 */
 void move(RobotInfo info){
-	// TODO move
+	// TODO move -> Moved/Updated some of Sam's code here should be acceptable - Matt :-)
+    switch (info.moveDirection)
+    {
+        case NORTH:
+            info.location.y--;
+            break;
+        case SOUTH:
+            info.location.y++;
+            break;
+        case EAST:
+            info.location.x++;
+            break;
+        case WEST:
+            info.location.x--;
+            break;
+        default:
+            break;
+    }
 }
 
 /** This function moves the robot, and pushes a box with it.
 	@param info The robot info struct to be pushed, containing the box to be pushed as well.
 */
 void push(RobotInfo info){
-	// TODO push
+	// TODO push -> Again simple updates to Sam's code but adding the displacement of the box as well - Matt :-)
+	if(ableToPush(info))
+	{
+        switch (info.moveDirection)
+        {
+            case NORTH:
+                info.box.location.y--;
+                info.location.y--;
+                break;
+            case SOUTH:
+                info.box.location.y++;
+                info.location.y++;
+                break;
+            case EAST:
+                info.box.location.x++;
+                info.location.x++;
+                break;
+            case WEST:
+                info.box.location.x--;
+                info.location.x--;
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 void BuildRobots(int numRobots)
