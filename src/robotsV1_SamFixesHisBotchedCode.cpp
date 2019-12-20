@@ -358,7 +358,6 @@ void initializeApplication(void){
 			{
 				boxes.push_back(currentBox);
 			}
-			previousBox = currentBox;
 		}
 		else
 		{
@@ -387,12 +386,91 @@ void initializeApplication(void){
 				}
 			}
 		}
+		previousBox = currentBox;
 	}
 	
-	
+	RobotInfo previousRobot;
 	for (int i = 0; i < numRobots; i++){
-	
-		robots.push_back(createRobot(i));
+		RobotInfo currentRobot;
+		currentRobot = createRobot(i);
+		bool safe = false;
+		if(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
+		{
+			while (!safe)
+			{
+				for(int i = 0; i < numDoors; i++)
+				{
+					if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
+					doors[i].location.x != previousRobot.location.x 
+					&& doors[i].location.y != previousRobot.location.y)
+					{
+						safe = true;
+					}
+					else
+					{
+						safe = false;
+					}	
+				}
+				for(int i = 0; i < numBoxes; i++)
+				{
+					if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
+					boxes[i].location.x != previousRobot.location.x 
+					&& boxes[i].location.y != previousRobot.location.y)
+					{
+						safe = true;
+					}
+					else
+					{
+						safe = false;
+					}	
+				}
+			}
+			if(safe)
+			{
+				robots.push_back(currentRobot);
+			}
+		}
+		else
+		{
+			while(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
+			{
+				currentRobot = createRobot(i);
+				while (!safe)
+				{
+					for(int i = 0; i < numDoors; i++)
+					{
+						if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
+						doors[i].location.x != previousRobot.location.x 
+						&& doors[i].location.y != previousRobot.location.y)
+						{
+							safe = true;
+						}
+						else
+						{
+							safe = true;
+						}
+					}
+					for(int i = 0; i < numBoxes; i++)
+					{
+						if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
+						boxes[i].location.x != previousRobot.location.x 
+						&& boxes[i].location.y != previousRobot.location.y)
+						{
+							safe = true;
+						}
+						else
+						{
+							safe = false;
+						}	
+					}
+				}
+				if(safe)
+				{
+					robots.push_back(currentRobot);
+				}
+			}
+		}
+		previousRobot = currentRobot;
 		
 		robotThreadFunc(robots[i]);
     }
