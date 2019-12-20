@@ -20,37 +20,36 @@
 
 using namespace std;
 
-typedef struct RobotInfo
-{
-    Direction moveDirection;
-    Direction pushDirection;
-    bool end = false;
+// Our structs: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-} RobotInfo;
+typedef struct Point {
+	int x;
+	int y;
+} Point;
 
-typedef struct BoxInfo
-{
-    int row;
-    int col;
-
+typedef struct BoxInfo{
+    Point location;
 } BoxInfo;
 
-typedef struct DoorInfo
-{
-    int row;
-    int col;
-
+typedef struct DoorInfo{
+    Point location;
 } DoorInfo;
 
-typedef struct AssignmentInfo
-{
-    int assignment;
-	int robotRow;
-    int robotCol;
-    RobotInfo robot;
+typedef struct RobotInfo{
+
+	pthread_t	threadID;
+	unsigned int index;
+	
+	Direction moveDirection;
+    Direction pushDirection;
+    bool end;
+	
+	Point location;
+	
     BoxInfo box;
     DoorInfo door;
-} AssignmentInfo;
+    
+} RobotInfo;
 
 //==================================================================================
 //	Function prototypes
@@ -113,7 +112,9 @@ const int MAX_LENGTH_MESSAGE = 32;
 char** message;
 time_t startTime;
 
-vector<AssignmentInfo> assignmentInfos;
+vector<RobotInfo> robots;
+vector<BoxInfo> boxes;
+vector<DoorInfo> doors;
 
 //==================================================================================
 //	These are the functions that tie the simulation with the rendering.
@@ -140,14 +141,15 @@ void displayGridPane(void)
 	{
 		//	here I would test if the robot thread is still live
 		//				   row		 column	   row	   column
-		drawRobotAndBox(i, assignmentInfos[i].robotRow, assignmentInfos[i].robotCol, assignmentInfos[i].box.col, assignmentInfos[i].box.row, assignmentInfos[i].assignment);
+		drawRobotAndBox(i, robots[i].location.y, robots[i].location.x, 
+						boxes[i].location.y, boxes[i].location.x, i);
 	}
 
 	for (int i=0; i<numDoors; i++)
 	{
 		//	here I would test if the robot thread is still alive
 		//				row				column	
-		drawDoor(i, assignmentInfos[i].door.row, assignmentInfos[i].door.col);
+		drawDoor(i, doors[i].location.y, doors[i].location.x);
 	}
 
 	//	This call does nothing important. It only draws lines
@@ -282,9 +284,7 @@ void cleanupGridAndLists(void)
 //
 //==================================================================================
 
-
-void initializeApplication(void)
-{
+void initializeApplication(void){
 
 	//	Allocate the grid
 	grid = (int**) malloc(numRows * sizeof(int*));
@@ -312,35 +312,162 @@ void initializeApplication(void)
 	//that will eventually include the doors, boxes, ect... the values needed to be stored globally to be drawn on the front end display.
 
 	//TODO : need to make it so that none of the values here are the same as each other
-
-	AssignmentInfo assignmentInformation;
-	for (int i = 0; i < numBoxes; i++)
-	{
-		assignmentInfos.push_back(MakeAssignment());
+	int numRobots = numBoxes;
+	
+	for(int i = 0; i < numDoors; ++i){
+		doors.push_back(createDoor());
+	}
+	
+	for (int i = 0; i < numBoxes; i++){
+		boxes.push_back(createBox());
 	}
 	
 	
-    for(int i = 0; i < numBoxes; i++)
-    {
-        bool atBox = false;
-
-        while(!assignmentInfos[i].robot.end)
-        {
-			if(!atBox)
-			{	
-				Direction direction = DetermineDirection(i);
-				MoveRobot(i, direction);
-			}
-			else
-			{
-				assignmentInfos[i].robot.end = true;
-			}
-		}
-    }
+	for (int i = 0; i < numRobots; i++){
 	
-
-
+		robots.push_back(createRobot(i));
+		
+		robotThreadFunc(robots[i]);
+    }
 }
+
+DoorInfo createDoor(){
+	DoorInfo door;
+	
+	int doorX, doorY;
+	
+	// TODO random door location.
+	
+	door.location = {doorX, doorY};
+	
+	return door;
+}
+
+BoxInfo createBox(){
+	
+	// TODO create boxes
+	
+	return NULL;
+}
+
+RobotInfo createRobot(){
+	
+	// TODO create the robot
+	
+	return NULL;
+}
+
+/** Function to generate a random number between start and end INCLUSIVELY
+*/
+int GenerateRandomValue(int start, int end){
+
+    return (rand() % (end-start+1)) + start;
+}
+
+void* robotThreadFunc(RobotInfo info){
+	
+	while(!boxAtEnd()){
+		
+		info.pushDirection = chooseNextPush(info);
+		
+		while(!ableToPush(info)){
+			info.moveDirection = chooseMovement(info);
+			
+			move(info);
+		}
+		
+		push(info);
+	}
+	
+	info.done = true;
+	
+	return nullptr;
+}
+
+bool boxAtEnd(BoxInfo box, DoorInfo door){
+	Point displacement = displacementBetweenPoints(box.location, door.location);
+	
+	return (displacement.x == 0) && (displacement.y == 0);
+}
+
+
+/** Returns the x,y displacements required to move a box to a door
+ * @param : x, y coordinates of box to be checked 
+ * @param : x, y coordinates of door to be checked 
+ */
+Point displacementBetweenPoints(Point p1, Point p2)
+{
+	int xdisplacement = p1.x-p2.x;
+	int ydisplacement = p1.y-p2.y;
+
+	Point returnPoint = {xDisplacement, yDisplacement};
+
+	return returnPoint;
+}
+
+Direction chooseNextPush(RobotInfo info){
+
+	Point distanceToMoveBox = displacementBetweenPoints(info.door.location, info.box.location);
+
+	if(distanceToMoveBox.x != 0){
+		return findXOrientation(distanceToMoveBox.x);
+	}
+	else{
+		return findYOrientation(distanceToMoveBox.y);
+	}
+}
+
+Direction findXOrientation(int x)
+{
+	if(x > 0) return EAST;
+	else if(x < 0) return WEST;
+	
+	return;
+}
+
+Direction findYOrientation(int y)
+{
+	if(y > 0) return SOUTH;
+	else if(y < 0) return NORTH;
+	
+	return;
+}
+
+Direction chooseMovement(RobotInfo info){	
+
+	// TODO choose movement correctly.
+	if(orientationX = EAST)
+		;// move robot to box.x - 1 (Note does not account for boxes against world edge)
+	if(orientationX = WEST)
+		;// move robot to box.x + 1 (Note does not account for boxes against world edge)
+	// move robot to box.y
+	// set robot Direction = orientationX
+	// push box distanceToMoveBox.x times
+	
+	
+	if(orientationY = SOUTH)
+		;// move robot to box.y + 1 (Note does not account for boxes against world edge)
+	if(orientationY = NORTH)
+		;// move robot to box.y - 1 (Note does not account for boxes against world edge)
+	// move robot to box.x
+	// set robot Direction = orientationY
+	// push bot distanceToMoveBox.y times 		
+}
+
+bool ableToPush(RobotInfo info){
+	// TODO check if in position to push box.
+}
+
+void move(RobotInfo info){
+	// TODO move
+}
+
+void push(RobotInfo info){
+	// TODO push
+}
+
+//_______________________________________________________________________________________
+
 
 void MoveRobot(int index, Direction direction)
 {
@@ -378,11 +505,6 @@ void MoveRobot(int index, Direction direction)
 	}
 }
 
-Direction DetermineDirection(int index)
-{
-
-}
-
 //function checks if the robot is one grid space NORTH, SOUTH, EAST, or WEST of the box
 bool CheckProximityOfRobotToBox(int index)
 {
@@ -408,16 +530,6 @@ bool CheckProximityOfRobotToBox(int index)
 	}
 }
 
-
-/**
- * Any code under this comment so far has been made by SAM, if you need to ask a question about it msg me.
- */
-int GenerateRandomValue(int number)
-{
-    return rand() % number;
-}
-
-
 AssignmentInfo MakeAssignment()
 {
     AssignmentInfo assignmentInfo;
@@ -437,64 +549,3 @@ AssignmentInfo MakeAssignment()
 }
 
 
-
-
-
-
-
-////////////////////////////////////////////////
-
-void moveBox(point robot, point box, point door)
-{
-	point distanceToMoveBox = displacementToDoor(box, door);
-
-	Direction orientationX = findXOrientation(distanceToMoveBox.x);
-	if(orientationX = EAST)
-		;// move robot to box.x - 1 (Note does not account for boxes against world edge)
-	if(orientationX = WEST)
-		;// move robot to box.x + 1 (Note does not account for boxes against world edge)
-	// move robot to box.y
-	// set robot Direction = orientationX
-	// push box distanceToMoveBox.x times
-	
-	Direction orientationY = findYOrientation(distanceToMoveBox.y);
-	if(orientationY = SOUTH)
-		;// move robot to box.y + 1 (Note does not account for boxes against world edge)
-	if(orientationY = NORTH)
-		;// move robot to box.y - 1 (Note does not account for boxes against world edge)
-	// move robot to box.x
-	// set robot Direction = orientationY
-	// push bot distanceToMoveBox.y times 		
-}
-
-Direction findXOrientation(int x)
-{
-	if(x > 0) return EAST;
-	else if(x < 0) return WEST;
-	
-	return;
-}
-
-Direction findYOrientation(int y)
-{
-	if(y > 0) return SOUTH;
-	else if(y < 0) return NORTH;
-	
-	return;
-}
-
-/** Returns the x,y displacements required to move a box to a door
- * @param : x, y coordinates of box to be checked 
- * @param : x, y coordinates of door to be checked 
- */
-point displacementToDoor(point obj, point door)
-{
-	int xdisplacement = door.x-box.x;
-	int ydisplacement = door.y-box.y;
-
-	point returnPoint;
-	returnPoint.x = xdisplacement;
-	returnPoint.y = ydisplacement;
-
-	return returnPoint;
-}
