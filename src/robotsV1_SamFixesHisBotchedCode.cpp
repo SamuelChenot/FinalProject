@@ -11,7 +11,6 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include <sstream>
 
 #include <cstdlib>
 
@@ -99,13 +98,6 @@ bool ableToPush(RobotInfo info);
 void move(RobotInfo info);
 void push(RobotInfo info);
 
-
-void MoveRobot(int index, Direction direction);
-
-bool CheckProximityOfRobotToBox(int index);
-
-Direction DetermineDirection(int index);
-
 //==================================================================================
 //	Application-level global variables
 //==================================================================================
@@ -138,6 +130,7 @@ const int MAX_LENGTH_MESSAGE = 32;
 char** message;
 time_t startTime;
 
+//global variables 
 vector<RobotInfo> robots;
 vector<BoxInfo> boxes;
 vector<DoorInfo> doors;
@@ -387,18 +380,18 @@ void writeToFile(RobotInfo info, MovementType type){
 	
 	switch(type){
 		case MOVE:
-			fprintf(fp, "robot %d move %c", info.index, getDirectionChar(info.moveDirection));
+			fprintf(fp, "robot %d move %c\n", info.index, getDirectionChar(info.moveDirection));
 			break;
 			
 		case PUSH:
-			fprintf(fp, "robot %d push %c", info.index, getDirectionChar(info.pushDirection));
+			fprintf(fp, "robot %d push %c\n", info.index, getDirectionChar(info.pushDirection));
 			break;
 	}
 	
 	fclose(fp);
 }
 
-char getDirectionChar(Direction dir}{
+char getDirectionChar(Direction dir){
 	switch(dir){
 		case NORTH:
 			return 'N';
@@ -490,8 +483,8 @@ RobotInfo createRobot(int index){
 	robot.end = false;
 	robot.index = index;
 	robot.location = {robotX, robotY};
-	robot.box = boxes[i];
-	robot.door = doors[i];
+	robot.box = boxes[index];
+	robot.door = doors[index];
 	
 	return robot;
 }
@@ -529,7 +522,7 @@ void* robotThreadFunc(RobotInfo info){
 	}
 	
 	// Make sure to update to tell the main program that the robot is done.
-	info.done = true;
+	info.end = true;
 	
 	return nullptr;
 }
@@ -610,8 +603,11 @@ Direction findYOrientation(int y)
 */
 Direction chooseMovement(RobotInfo info){
 	
+	//variables to store the location to to move to
 	int destX, destY;
 	
+	//depending on the direction of the push
+	//set the destination of the push
 	switch(info.pushDirection){
 		case NORTH: 
 			destX = info.box.location.x;
