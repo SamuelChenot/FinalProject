@@ -73,13 +73,6 @@ bool CheckProximityOfRobotToBox(int index);
 
 Direction DetermineDirection(int index);
 
-
-
-
-
-
-
-
 //==================================================================================
 //	Application-level global variables
 //==================================================================================
@@ -433,25 +426,36 @@ Direction findYOrientation(int y)
 	return;
 }
 
-Direction chooseMovement(RobotInfo info){	
+Direction chooseMovement(RobotInfo info){
+    // TODO choose movement -> Should now select the correct movement direction - Matt :-)
 
-	// TODO choose movement correctly.
-	if(orientationX = EAST)
-		;// move robot to box.x - 1 (Note does not account for boxes against world edge)
-	if(orientationX = WEST)
-		;// move robot to box.x + 1 (Note does not account for boxes against world edge)
-	// move robot to box.y
-	// set robot Direction = orientationX
-	// push box distanceToMoveBox.x times
-	
-	
-	if(orientationY = SOUTH)
-		;// move robot to box.y + 1 (Note does not account for boxes against world edge)
-	if(orientationY = NORTH)
-		;// move robot to box.y - 1 (Note does not account for boxes against world edge)
-	// move robot to box.x
-	// set robot Direction = orientationY
-	// push bot distanceToMoveBox.y times 		
+	switch(info.pushDirection)
+	{
+        case NORTH:
+            if(info.location.y <= info.box.location.y) {
+                return SOUTH;
+            }else{
+                return NORTH;
+            }
+        case SOUTH:
+            if(info.location.y >= info.box.location.y){
+                return NORTH;
+            }else {
+                return SOUTH;
+            }
+        case EAST:
+            if(info.location.x >= info.box.location.x){
+                return WEST;
+            }else{
+                return EAST;
+            }
+        case WEST:
+            if(info.location.x <= info.box.location.x){
+                return EAST;
+            }else{
+                return WEST;
+            }
+	}
 }
 
 bool ableToPush(RobotInfo info){
@@ -459,11 +463,52 @@ bool ableToPush(RobotInfo info){
 }
 
 void move(RobotInfo info){
-	// TODO move
+	// TODO move -> Moved/Updated some of Sam's code here should be acceptable - Matt :-)
+    switch (info.moveDirection)
+    {
+        case NORTH:
+            info.location.y--;
+            break;
+        case SOUTH:
+            info.location.y++;
+            break;
+        case EAST:
+            info.location.x++;
+            break;
+        case WEST:
+            info.location.x--;
+            break;
+        default:
+            break;
+    }
 }
 
 void push(RobotInfo info){
-	// TODO push
+	// TODO push -> Again simple updates to Sam's code but adding the displacement of the box as well - Matt :-)
+	if(ableToPush(info))
+	{
+        switch (info.moveDirection)
+        {
+            case NORTH:
+                info.box.location.y--;
+                info.location.y--;
+                break;
+            case SOUTH:
+                info.box.location.y++;
+                info.location.y++;
+                break;
+            case EAST:
+                info.box.location.x++;
+                info.location.x++;
+                break;
+            case WEST:
+                info.box.location.x--;
+                info.location.x--;
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 //_______________________________________________________________________________________
