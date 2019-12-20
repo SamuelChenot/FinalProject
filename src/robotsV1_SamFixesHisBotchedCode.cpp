@@ -37,14 +37,14 @@ typedef struct Point {
 */
 typedef struct BoxInfo{
 	/** The location of the box in the grid. */
-    Point location;
+	Point location;
 } BoxInfo;
 
 /** A struct of info for a door.
 */
 typedef struct DoorInfo{
 	/** The location of the door in the grid. */
-    Point location;
+	Point location;
 } DoorInfo;
 
 /** A struct to hold all the info for a robot/thread.
@@ -59,20 +59,20 @@ typedef struct RobotInfo{
 	/** The next direction the robot wants to move in. */
 	Direction moveDirection;
 	/** The direction that the robot wants to push the box in next. */
-    Direction pushDirection;
-    
-    /** Whether or not the robot has finished moving the box to the door. */
-    bool end;
+	Direction pushDirection;
+	
+	/** Whether or not the robot has finished moving the box to the door. */
+	bool end;
 	
 	/** The location on the grid of the robot. */
 	Point location;
 	
 	/** The box that the robot needs to push. */
-    BoxInfo box;
-    
-    /** The door that the box needs to be pushed to. */
-    DoorInfo door;
-    
+	BoxInfo box;
+	
+	/** The door that the box needs to be pushed to. */
+	DoorInfo door;
+	
 } RobotInfo;
 
 //==================================================================================
@@ -159,9 +159,9 @@ void displayGridPane(void)
 	glTranslatef(0, GRID_PANE_HEIGHT, 0);
 	glScalef(1.f, -1.f, 1.f);
 	
-    //can touch
+	//can touch
 
-    
+	
 
 	for (int i=0; i<numBoxes; i++)
 	{
@@ -214,7 +214,7 @@ void displayStatePane(void)
 	//	You *must* synchronize this call.
 	//
 	//---------------------------------------------------------
-    
+	
 	drawState(numMessages, message);
 	
 	
@@ -259,10 +259,10 @@ int main(int argc, char** argv)
 	//	grid, the number of boxes (and robots), and the number of doors.
 	//	You are going to have to extract these.  For the time being,
 	//	I hard code-some values
-    numRows = stoi(argv[1]);
-    numCols = stoi(argv[2]);
-    numBoxes = stoi(argv[3]);
-    numDoors = stoi(argv[4]);
+	numRows = stoi(argv[1]);
+	numCols = stoi(argv[2]);
+	numBoxes = stoi(argv[3]);
+	numDoors = stoi(argv[4]);
 
 
 
@@ -310,6 +310,13 @@ void cleanupGridAndLists(void)
 //
 //==================================================================================
 
+#define FILE_NAME robotSimulOut.txt
+
+typedef enum MovementType{
+	MOVE,
+	PUSH
+}MovementType;
+
 /** This function sets up the application values needed to run, 
 	while also creating all of the robots to push their blocks.
 */
@@ -328,17 +335,80 @@ void initializeApplication(void){
 	// Seed the pseudo-random generator
 	startTime = time(NULL);
 	srand((unsigned int) startTime);
-	string line = to_string(numRows) + " " + to_string(numCols) + " " + to_string(numBoxes) + " " + to_string(numDoors);
-
-	WriteToFile(line);
-
-	// New counter for the sake of sanity.
-	int numRobots = numBoxes;
 	
-	BuildDoors();
-	BuildBoxes();
-	BuildRobots(numRobots);
+	// Build the string for the file header.
 	
+	
+	for(int i = 0; i < numDoors; ++i){
+		doors.push_back(createDoor());
+	}
+	
+	for(int i = 0; i < numBoxes; ++i){
+		boxes.push_back(createBox());
+	}
+	
+	for(int i = 0; i < numBoxes; ++i){
+		robots.push_back(createRobot(i));
+	}
+	
+	writeFileHeader();
+	
+	for(int i = 0; i < numBoxes; ++i){
+		robotThreadFunc(robots[i]);
+	}
+}
+
+void writeFileHeader(){
+	
+	FILE* fp = fopen(FILE_NAME, "w");
+	
+	fprintf(fp, "Rows: %d Cols: %d Boxes: %d Doors: %d\n\n", numRows, numCols, numBoxes, numDoors);
+	
+	for(int i = 0; i < numDoors; ++i){
+		fprintf(fp, "Door %d: X: %d Y: %d\n", i, doors[i].location.x, doors[i].location.y);
+	}
+	
+	for(int i = 0; i < numBoxes; ++i){
+		fprintf(fp, "Box %d: X: %d Y: %d\n", i, boxes[i].location.x, boxes[i].location.y);
+	}
+	
+	for(int i = 0; i < numBoxes; ++i){
+		fprintf(fp, "Robot %d: X: %d Y: %d Destination: %d\n", i, robots[i].location.x, robots[i].location.y, i);
+	}
+	
+	fprintf(fp, "\n");
+	
+	fclose(fp);
+}
+
+void writeToFile(RobotInfo info, MovementType type){
+	
+	FILE* fp = fopen(FILE_NAME, "a");
+	
+	switch(type){
+		case MOVE:
+			fprintf(fp, "robot %d move %c", info.index, getDirectionChar(info.moveDirection));
+			break;
+			
+		case PUSH:
+			fprintf(fp, "robot %d push %c", info.index, getDirectionChar(info.pushDirection));
+			break;
+	}
+	
+	fclose(fp);
+}
+
+char getDirectionChar(Direction dir}{
+	switch(dir){
+		case NORTH:
+			return 'N';
+		case SOUTH:
+			return 'S';
+		case WEST:
+			return 'W';
+		case EAST:
+			return 'E';
+	}
 }
 
 /** This function creates a random door in a unique location.
@@ -347,14 +417,38 @@ void initializeApplication(void){
 DoorInfo createDoor(){
 	DoorInfo door;
 	
-	int doorX, doorY;
+	int doorX = GenerateRandomValue(0, numCols-1);
+	int doorY = GenerateRandomValue(0, numRows-1);
 	
-	doorX = GenerateRandomValue(numCols);
-	doorY = GenerateRandomValue(numRows);
+	while(!alreadyExist(doorX, doorY)){
+		
+		doorX = GenerateRandomValue(0, numCols);
+		doorY = GenerateRandomValue(0, numRows);
+	}
 	
 	door.location = {doorX, doorY};
 	
 	return door;
+}
+
+bool alreadyExist(int x, int y){
+	
+	for(int i = 0; i < doors.size(); ++i){
+		if(doors[i].location.x == x && doors[i].location.y == y)
+			return true;
+	}
+	
+	for(int i = 0; i < boxes.size(); ++i){
+		if(boxes[i].location.x == x && boxes[i].location.y == y)
+			return true;
+	}
+	
+	for(int i = 0; i < robots.size(); ++i){
+		if(robots[i].location.x == x && robots[i].location.y == y)
+			return true;
+	}
+	
+	return false;
 }
 
 /** This function creates a random box in a unique location.
@@ -364,14 +458,15 @@ BoxInfo createBox(){
 	
 	BoxInfo box;
 
-	int boxX, boxY;
-
-	boxX = GenerateRandomValue(numCols);
-	boxY = GenerateRandomValue(numRows);
+	int boxX = GenerateRandomValue(1, numCols-2);
+	int boxY = GenerateRandomValue(1, numRows-2);
+	
+	while(!alreadyExist(boxX, boxY)){
+		boxX = GenerateRandomValue(1, numCols-2);
+		boxY = GenerateRandomValue(1, numRows-2);
+	}
 
 	box.location = {boxX, boxY};
-
-	// TODO create boxes
 	
 	return box;
 }
@@ -384,16 +479,19 @@ RobotInfo createRobot(int index){
 
 	RobotInfo robot;
 
-	int robotX, robotY;
-
-	robotX = GenerateRandomValue(numCols);
-	robotY = GenerateRandomValue(numRows);
+	int robotX = GenerateRandomValue(0, numCols-1);
+	int robotY = GenerateRandomValue(0, numRows-1);
+	
+	while(!alreadyExist(robotX, robotY)){
+		robotX = GenerateRandomValue(0, numCols-1);
+		robotY = GenerateRandomValue(0, numRows-1);
+	}
 
 	robot.end = false;
 	robot.index = index;
 	robot.location = {robotX, robotY};
-	
-	// TODO create the robot
+	robot.box = boxes[i];
+	robot.door = doors[i];
 	
 	return robot;
 }
@@ -405,7 +503,7 @@ RobotInfo createRobot(int index){
 */
 int GenerateRandomValue(int start, int end){
 
-    return (rand() % (end-start+1)) + start;
+	return (rand() % (end-start+1)) + start;
 }
 
 /** The main function that runs the robot's code.
@@ -510,34 +608,70 @@ Direction findYOrientation(int y)
 	@param info The robot info struct to use to choose movement.
 	@return The next direction to move in.
 */
-Direction chooseMovement(RobotInfo info){	
-
-	switch(info.pushDirection)
-	{
-        case NORTH:
-            if(info.location.y <= info.box.location.y) {
-                return SOUTH;
-            }else{
-                return NORTH;
-            }
-        case SOUTH:
-            if(info.location.y >= info.box.location.y){
-                return NORTH;
-            }else {
-                return SOUTH;
-            }
-        case EAST:
-            if(info.location.x >= info.box.location.x){
-                return WEST;
-            }else{
-                return EAST;
-            }
-        case WEST:
-            if(info.location.x <= info.box.location.x){
-                return EAST;
-            }else{
-                return WEST;
-            }
+Direction chooseMovement(RobotInfo info){
+	
+	int destX, destY;
+	
+	switch(info.pushDirection){
+		case NORTH: 
+			destX = info.box.location.x;
+			destY = info.box.location.y+1;
+			break;
+		case SOUTH:
+			destX = info.box.location.x;
+			destY = info.box.location.y-1;
+			break;
+		case WEST:
+			destX = info.box.location.x+1;
+			destY = info.box.location.y;
+			break;
+		case EAST:
+			destX = info.box.location.x-1;
+			destY = info.box.location.y;
+			break;
+	}
+	
+	Direction destDir;
+	
+	switch(info.pushDirection){
+		case NORTH:
+		case SOUTH:
+			if(info.location.x == info.box.location.x)
+				return WEST;
+			else{
+				if(destY != info.location.y){
+					if(info.location.y < destY)
+						return SOUTH;
+					else
+						return NORTH;
+				}
+				else{
+					if(info.location.x < destX)
+						destDir = EAST;
+					else
+						destDir = WEST;
+				}
+			}
+			break;
+		case WEST:
+		case EAST:
+			if(info.location.y == info.box.location.y)
+				return NORTH;
+			else{
+				if(destX != info.location.x){
+					if(info.location.x < destX)
+						destDir = EAST;
+					else
+						destDir = WEST;
+				}
+				else{
+					if(info.location.y < destY)
+						destDir = SOUTH;
+					else
+						destDir = NORTH;
+				}
+			}
+			break;
 	}
 }
 
@@ -554,23 +688,25 @@ bool ableToPush(RobotInfo info){
 */
 void move(RobotInfo info){
 	// TODO move -> Moved/Updated some of Sam's code here should be acceptable - Matt :-)
-    switch (info.moveDirection)
-    {
-        case NORTH:
-            info.location.y--;
-            break;
-        case SOUTH:
-            info.location.y++;
-            break;
-        case EAST:
-            info.location.x++;
-            break;
-        case WEST:
-            info.location.x--;
-            break;
-        default:
-            break;
-    }
+	switch (info.moveDirection)
+	{
+		case NORTH:
+			info.location.y--;
+			break;
+		case SOUTH:
+			info.location.y++;
+			break;
+		case EAST:
+			info.location.x++;
+			break;
+		case WEST:
+			info.location.x--;
+			break;
+		default:
+			break;
+	}
+	
+	writeToFile(info, MOVE);
 }
 
 /** This function moves the robot, and pushes a box with it.
@@ -578,294 +714,28 @@ void move(RobotInfo info){
 */
 void push(RobotInfo info){
 	// TODO push -> Again simple updates to Sam's code but adding the displacement of the box as well - Matt :-)
-	if(ableToPush(info))
-	{
-        switch (info.moveDirection)
-        {
-            case NORTH:
-                info.box.location.y--;
-                info.location.y--;
-                break;
-            case SOUTH:
-                info.box.location.y++;
-                info.location.y++;
-                break;
-            case EAST:
-                info.box.location.x++;
-                info.location.x++;
-                break;
-            case WEST:
-                info.box.location.x--;
-                info.location.x--;
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-void BuildRobots(int numRobots)
-{
-	RobotInfo previousRobot;
-	for (int i = 0; i < numRobots; i++){
-		RobotInfo currentRobot;
-		currentRobot = createRobot(i);
-		bool safe = false;
-		if(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
-		{
-			while (!safe)
-			{
-				for(int i = 0; i < numDoors; i++)
-				{
-					if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
-					doors[i].location.x != previousRobot.location.x 
-					&& doors[i].location.y != previousRobot.location.y)
-					{
-						safe = true;
-					}
-					else
-					{
-						safe = false;
-					}	
-				}
-				for(int i = 0; i < numBoxes; i++)
-				{
-					if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
-					boxes[i].location.x != previousRobot.location.x 
-					&& boxes[i].location.y != previousRobot.location.y)
-					{
-						safe = true;
-					}
-					else
-					{
-						safe = false;
-					}	
-				}
-			}
-			if(safe)
-			{
-				robots.push_back(currentRobot);
-			}
-		}
-		else
-		{
-			while(currentRobot.location.x != previousRobot.location.x && currentRobot.location.y != previousRobot.location.y)
-			{
-				currentRobot = createRobot(i);
-				while (!safe)
-				{
-					for(int i = 0; i < numDoors; i++)
-					{
-						if(doors[i].location.x != currentRobot.location.x && doors[i].location.y != currentRobot.location.y &&
-						doors[i].location.x != previousRobot.location.x 
-						&& doors[i].location.y != previousRobot.location.y)
-						{
-							safe = true;
-						}
-						else
-						{
-							safe = true;
-						}
-					}
-					for(int i = 0; i < numBoxes; i++)
-					{
-						if(boxes[i].location.x != currentRobot.location.x && boxes[i].location.y != currentRobot.location.y &&
-						boxes[i].location.x != previousRobot.location.x 
-						&& boxes[i].location.y != previousRobot.location.y)
-						{
-							safe = true;
-						}
-						else
-						{
-							safe = false;
-						}	
-					}
-				}
-				if(safe)
-				{
-					robots.push_back(currentRobot);
-				}
-			}
-		}
-		previousRobot = currentRobot;
+	switch (info.pushDirection){
 		
-		robotThreadFunc(robots[i]);
-    }
-}
-
-void BuildBoxes()
-{
-	BoxInfo previousBox;
-	for (int i = 0; i < numBoxes; i++){
-		BoxInfo currentBox;
-		currentBox = createBox();
-		bool safe = false;
-		if(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
-		{
-			while (!safe)
-			{
-				for(int i = 0; i < numDoors; i++)
-				{
-					if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
-					doors[i].location.x != previousBox.location.x 
-					&& doors[i].location.y != previousBox.location.y)
-					{
-						safe = true;
-					}
-					else
-					{
-						safe = false;
-					}	
-				}
-			}
-			if(safe)
-			{
-				boxes.push_back(currentBox);
-			}
-		}
-		else
-		{
-			while(currentBox.location.x != previousBox.location.x && currentBox.location.y != previousBox.location.y)
-			{
-				currentBox = createBox();
-				while (!safe)
-				{
-					for(int i = 0; i < numDoors; i++)
-					{
-						if(doors[i].location.x != currentBox.location.x && doors[i].location.y != currentBox.location.y &&
-						doors[i].location.x != previousBox.location.x 
-						&& doors[i].location.y != previousBox.location.y)
-						{
-							safe = true;
-						}
-						else
-						{
-							safe = true;
-						}
-					}
-				}
-				if(safe)
-				{
-					boxes.push_back(currentBox);
-				}
-			}
-		}
-		previousBox = currentBox;
-	}
-}
-
-void BuildDoors()
-{
-	DoorInfo previousDoor;
-	for(int i = 0; i < numDoors; ++i){
-		DoorInfo currentDoor = createDoor();
-		if(currentDoor.location.x != previousDoor.location.x && currentDoor.location.y != previousDoor.location.y)
-		{
-			doors.push_back(currentDoor);
-		}
-		else
-		{
-			while(currentDoor.location.x == previousDoor.location.x && currentDoor.location.y == previousDoor.location.y)
-			{
-				currentDoor = createDoor();
-			}
-			doors.push_back(currentDoor);
-		}
-		previousDoor = currentDoor;	
-	}
-}
-
-void WriteToFile(string content)
-{
-	string filename = "log.txt";
-
-	ofstream file(filename, fstream::app);
-
-	if(file.is_open())
-	{
-		file << content << endl;
-	}
-}
-//_______________________________________________________________________________________
-
-
-void MoveRobot(int index, Direction direction)
-{
-
-	switch (direction)
-	{
-	case NORTH:
-		assignmentInfos[index].robotRow--;
-		break;
-	case SOUTH:
-		assignmentInfos[index].robotRow++;
-		break;
-	case EAST:
-		assignmentInfos[index].robotCol--;
-		break;
-	case WEST:
-		assignmentInfos[index].robotCol++;
-		break;
-	default:
-		break;
+		case NORTH:
+			info.box.location.y--;
+			info.location.y--;
+			break;
+		case SOUTH:
+			info.box.location.y++;
+			info.location.y++;
+			break;
+		case EAST:
+			info.box.location.x++;
+			info.location.x++;
+			break;
+		case WEST:
+			info.box.location.x--;
+			info.location.x--;
+			break;
+		default:
+			break;
 	}
 	
-	//update the grid to show the newly moved robot
-	displayGridPane();
-    displayStatePane();
-
-
-	//recursive calls that will keep moving the robot till we get to the box
-	//TODO : Currently this function will run until we are directly on top of the box, we need to make it so it is next to the box.
-	//TODO : Make a function that checks if the robot is NEXT to the box and that will be our new stopping point
-	if(!CheckProximityOfRobotToBox(index))
-	{
-		//if for whatever reason the robot is not directly next to the box, we will call this function again until it is.
-		MoveRobot(index, direction);
-	}
+	writeToFile(info, PUSH);
 }
-
-//function checks if the robot is one grid space NORTH, SOUTH, EAST, or WEST of the box
-bool CheckProximityOfRobotToBox(int index)
-{
-	if(assignmentInfos[index].robotRow == assignmentInfos[index].box.row+1 && assignmentInfos[index].robotCol == assignmentInfos[index].box.col)
-	{
-		return true;
-	}
-	else if(assignmentInfos[index].robotRow == assignmentInfos[index].box.row-1 && assignmentInfos[index].robotCol == assignmentInfos[index].box.col)
-	{
-		return true;
-	}
-	else if(assignmentInfos[index].robotRow == assignmentInfos[index].box.row && assignmentInfos[index].robotCol == assignmentInfos[index].box.col+1)
-	{
-		return true;
-	}
-	else if(assignmentInfos[index].robotRow == assignmentInfos[index].box.row && assignmentInfos[index].robotCol == assignmentInfos[index].box.col-1)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-//AssignmentInfo MakeAssignment()
-//{
-//  AssignmentInfo assignmentInfo;
-//
-//  assignmentInfo.assignment = GenerateRandomValue(3);
-//
-//    assignmentInfo.box.col = GenerateRandomValue(numCols);
-//    assignmentInfo.box.row = GenerateRandomValue(numRows);
-//
-//    assignmentInfo.robotCol = GenerateRandomValue(numCols);
-//    assignmentInfo.robotRow = GenerateRandomValue(numRows);
-//    
-//    assignmentInfo.door.col = GenerateRandomValue(numCols);
-//    assignmentInfo.door.row = GenerateRandomValue(numRows);
-//
-//   return assignmentInfo;
-//}
-
 
