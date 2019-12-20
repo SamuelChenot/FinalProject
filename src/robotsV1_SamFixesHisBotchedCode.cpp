@@ -336,7 +336,8 @@ DoorInfo createDoor(){
 	
 	int doorX, doorY;
 	
-	// TODO random door location.
+	doorX = GenerateRandomValue(numCols);
+	doorY = GenerateRandomValue(numRows);
 	
 	door.location = {doorX, doorY};
 	
@@ -344,6 +345,9 @@ DoorInfo createDoor(){
 }
 
 BoxInfo createBox(){
+	
+	BoxInfo box;
+
 	
 	// TODO create boxes
 	
