@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
+#include <fstream>
+#include <sstream>
 
 #include <cstdlib>
 
@@ -312,6 +314,11 @@ void initializeApplication(void){
 	//that will eventually include the doors, boxes, ect... the values needed to be stored globally to be drawn on the front end display.
 
 	//TODO : need to make it so that none of the values here are the same as each other
+	
+	string line = to_string(numRows) + " " + to_string(numCols) + " " + to_string(numBoxes) + " " + to_string(numDoors);
+
+	WriteToFile(line);
+
 	int numRobots = numBoxes;
 	
 	BuildDoors();
@@ -647,6 +654,17 @@ void BuildDoors()
 	}
 }
 
+void WriteToFile(string content)
+{
+	string filename = "log.txt";
+
+	ofstream file(filename, fstream::app);
+
+	if(file.is_open())
+	{
+		file << content << endl;
+	}
+}
 //_______________________________________________________________________________________
 
 
