@@ -22,31 +22,53 @@ using namespace std;
 
 // Our structs: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+/** A struct to hold a single point on the grid.
+*/
 typedef struct Point {
+	/** The x location of the point. */
 	int x;
+	/** The y location of the point. */
 	int y;
 } Point;
 
+/** A struct of info for a box. 
+*/
 typedef struct BoxInfo{
+	/** The location of the box in the grid. */
     Point location;
 } BoxInfo;
 
+/** A struct of info for a door.
+*/
 typedef struct DoorInfo{
+	/** The location of the door in the grid. */
     Point location;
 } DoorInfo;
 
+/** A struct to hold all the info for a robot/thread.
+*/
 typedef struct RobotInfo{
 
+	/** The thread ID of a given robot. */
 	pthread_t	threadID;
+	/** The index of the robot. */
 	unsigned int index;
 	
+	/** The next direction the robot wants to move in. */
 	Direction moveDirection;
+	/** The direction that the robot wants to push the box in next. */
     Direction pushDirection;
+    
+    /** Whether or not the robot has finished moving the box to the door. */
     bool end;
 	
+	/** The location on the grid of the robot. */
 	Point location;
 	
+	/** The box that the robot needs to push. */
     BoxInfo box;
+    
+    /** The door that the box needs to be pushed to. */
     DoorInfo door;
     
 } RobotInfo;
@@ -59,25 +81,21 @@ void displayStatePane(void);
 void initializeApplication(void);
 void cleanupGridAndLists(void);
 
-AssignmentInfo MakeAssignment();
-
-/** 
- * @param number however many cols or rows 
- * @return 
-**/
-int GenerateRandomValue(int number);
-
-void MoveRobot(int index, Direction direction);
-
-bool CheckProximityOfRobotToBox(int index);
-
-Direction DetermineDirection(int index);
-
-
-
-
-
-
+// Our function prototypes
+DoorInfo createDoor();
+BoxInfo createBox();
+RobotInfo createRobot(int id);
+int GenerateRandomValue(int start, int end);
+void* robotThreadFunc(RobotInfo info);
+bool boxAtEnd(BoxInfo box, DoorInfo door);
+Point displacementBetweenPoints(Point p1, Point p2);
+Direction chooseNextPush(RobotInfo info);
+Direction findXOrientation(int x);
+Direction findYOrientation(int y);
+Direction chooseMovement(RobotInfo info);
+bool ableToPush(RobotInfo info);
+void move(RobotInfo info);
+void push(RobotInfo info);
 
 
 //==================================================================================
@@ -284,6 +302,9 @@ void cleanupGridAndLists(void)
 //
 //==================================================================================
 
+/** This function sets up the application values needed to run, 
+	while also creating all of the robots to push their blocks.
+*/
 void initializeApplication(void){
 
 	//	Allocate the grid
@@ -296,33 +317,24 @@ void initializeApplication(void){
 		message[k] = (char*) malloc((MAX_LENGTH_MESSAGE+1)*sizeof(char));
 		
 	
-	//	seed the pseudo-random generator
+	// Seed the pseudo-random generator
 	startTime = time(NULL);
 	srand((unsigned int) startTime);
-
-	//	normally, here I would initialize the location of my doors, boxes,
-	//	and robots, and create threads (not necessarily in that order).
-	//	For the handout I have nothing to do.
-    
-    //will put this inside of the thread function later
-
-	//We get the value numBoxes from the command line
-	//loop for numBoxes times in order to generate new coords for each robot, box, and door, and door assignments
-	//I opted to store the values in global vectors as they can be accessed when needed globally and in order to draw the initial grid
-	//that will eventually include the doors, boxes, ect... the values needed to be stored globally to be drawn on the front end display.
-
-	//TODO : need to make it so that none of the values here are the same as each other
+	
+	// New counter for the sake of sanity.
 	int numRobots = numBoxes;
 	
+	// Create all the doors.
 	for(int i = 0; i < numDoors; ++i){
 		doors.push_back(createDoor());
 	}
 	
+	// Create all the boxes.
 	for (int i = 0; i < numBoxes; i++){
 		boxes.push_back(createBox());
 	}
 	
-	
+	// Create all of the robots.
 	for (int i = 0; i < numRobots; i++){
 	
 		robots.push_back(createRobot(i));
@@ -331,6 +343,9 @@ void initializeApplication(void){
     }
 }
 
+/** This function creates a random door in a unique location.
+	@return The info struct for the new door.
+*/
 DoorInfo createDoor(){
 	DoorInfo door;
 	
@@ -343,6 +358,9 @@ DoorInfo createDoor(){
 	return door;
 }
 
+/** This function creates a random box in a unique location.
+	@return The info struct for the new box.
+*/
 BoxInfo createBox(){
 	
 	// TODO create boxes
@@ -350,7 +368,11 @@ BoxInfo createBox(){
 	return NULL;
 }
 
-RobotInfo createRobot(){
+/** This function creates a robot at a random, unique location, 
+	and prepares the info struct to be used.
+	@return The info struct for the robot, with the threadID still not set.
+*/
+RobotInfo createRobot(int id){
 	
 	// TODO create the robot
 	
@@ -358,42 +380,61 @@ RobotInfo createRobot(){
 }
 
 /** Function to generate a random number between start and end INCLUSIVELY
+	@param start The start of the set of random numbers.
+	@param end The end of the set of random numbers.
+	@return A random number between the given values.
 */
 int GenerateRandomValue(int start, int end){
 
     return (rand() % (end-start+1)) + start;
 }
 
+/** The main function that runs the robot's code.
+	@param info The struct of info for the robot to use.
+*/
 void* robotThreadFunc(RobotInfo info){
 	
+	// Keep going until the box reaches the goal/door.
 	while(!boxAtEnd()){
 		
+		// Choose which direction to push the box in next.
 		info.pushDirection = chooseNextPush(info);
 		
+		// Keep moving until the robot reaches the right spot to push the box.
 		while(!ableToPush(info)){
-			info.moveDirection = chooseMovement(info);
 			
+			info.moveDirection = chooseMovement(info);
 			move(info);
 		}
 		
+		// Push the box.
 		push(info);
 	}
 	
+	// Make sure to update to tell the main program that the robot is done.
 	info.done = true;
 	
 	return nullptr;
 }
 
+/** A function that checks if the given box has reached the destination door.
+	@param box The box to check.
+	@param door The destination door.
+	@return Whether or not the box has reached the door.
+*/
 bool boxAtEnd(BoxInfo box, DoorInfo door){
+	// Comput the displacement between the box and the door.
 	Point displacement = displacementBetweenPoints(box.location, door.location);
 	
+	// If that displacement is 0, this will evaluate to true.
 	return (displacement.x == 0) && (displacement.y == 0);
 }
 
 
 /** Returns the x,y displacements required to move a box to a door
- * @param : x, y coordinates of box to be checked 
- * @param : x, y coordinates of door to be checked 
+ * @param p1 x, y coordinates of the first point to be checked 
+ * @param p2 x, y coordinates of the second point to be checked 
+ * @return The X and Y displacement between the two points.
  */
 Point displacementBetweenPoints(Point p1, Point p2)
 {
@@ -405,6 +446,10 @@ Point displacementBetweenPoints(Point p1, Point p2)
 	return returnPoint;
 }
 
+/** A function that chooses the direction of the next box push.
+	@param info The struct of robot info to use to check.
+	@return The direction that the box needs to be pushed in next.
+*/
 Direction chooseNextPush(RobotInfo info){
 
 	Point distanceToMoveBox = displacementBetweenPoints(info.door.location, info.box.location);
@@ -417,6 +462,10 @@ Direction chooseNextPush(RobotInfo info){
 	}
 }
 
+/** This function finds the push direction for a given X displacement.
+	@param x The displacement on the X axis of the box from the door.
+	@return The X axis direction of movement needed.
+*/
 Direction findXOrientation(int x)
 {
 	if(x > 0) return EAST;
@@ -425,6 +474,10 @@ Direction findXOrientation(int x)
 	return;
 }
 
+/** This function finds the push direction for a given Y displacement.
+	@param y The displacement on the y axis of the box from the door.
+	@return The Y axis direction of movement needed.
+*/
 Direction findYOrientation(int y)
 {
 	if(y > 0) return SOUTH;
@@ -433,6 +486,11 @@ Direction findYOrientation(int y)
 	return;
 }
 
+/** This function chooses which direction the robot should move in 
+	to reach the correct side of the box.
+	@param info The robot info struct to use to choose movement.
+	@return The next direction to move in.
+*/
 Direction chooseMovement(RobotInfo info){	
 
 	// TODO choose movement correctly.
@@ -454,14 +512,24 @@ Direction chooseMovement(RobotInfo info){
 	// push bot distanceToMoveBox.y times 		
 }
 
+/** A function that checks if the robot is in place to push the box.
+	@param info The robot info struct used to check.
+	@return Whether or not the robot is in place to push.
+*/
 bool ableToPush(RobotInfo info){
 	// TODO check if in position to push box.
 }
 
+/** This function moves the robot by one square.
+	@param info The robot info struct to be moved.
+*/
 void move(RobotInfo info){
 	// TODO move
 }
 
+/** This function moves the robot, and pushes a box with it.
+	@param info The robot info struct to be pushed, containing the box to be pushed as well.
+*/
 void push(RobotInfo info){
 	// TODO push
 }
