@@ -68,10 +68,10 @@ typedef struct RobotInfo{
 	Point location;
 	
 	/** The box that the robot needs to push. */
-	BoxInfo box;
+	BoxInfo *box;
 	
 	/** The door that the box needs to be pushed to. */
-	DoorInfo door;
+	DoorInfo *door;
 
 } RobotInfo;
 
@@ -89,18 +89,18 @@ DoorInfo createDoor();
 BoxInfo createBox();
 RobotInfo createRobot(int id);
 int GenerateRandomValue(int start, int end);
-void* robotThreadFunc(RobotInfo info);
+void* robotThreadFunc(RobotInfo &info);
 bool boxAtEnd(BoxInfo box, DoorInfo door);
 bool alreadyExist(int x, int y);
 char getDirectionChar(Direction dir);
 Point displacementBetweenPoints(Point p1, Point p2);
-Direction chooseNextPush(RobotInfo info);
+Direction chooseNextPush(RobotInfo &info);
 Direction findXOrientation(int x);
 Direction findYOrientation(int y);
-Direction chooseMovement(RobotInfo info);
-bool ableToPush(RobotInfo info);
-void move(RobotInfo info);
-void push(RobotInfo info);
+Direction chooseMovement(RobotInfo &info);
+bool ableToPush(RobotInfo &info);
+void move(RobotInfo &info);
+void push(RobotInfo &info);
 void writeFileHeader();
 
 
@@ -312,7 +312,7 @@ void cleanupGridAndLists(void)
 //
 //==================================================================================
 
-#define FILE_NAME robotSimulOut.txt;
+#define FILE_NAME "robotSimulOut.txt"
 
 typedef enum MovementType{
 	MOVE,
@@ -371,9 +371,13 @@ void writeFileHeader(){
 		fprintf(fp, "Door %d: X: %d Y: %d\n", i, doors[i].location.x, doors[i].location.y);
 	}
 	
+	fprintf(fp, "\n");
+	
 	for(int i = 0; i < numBoxes; ++i){
 		fprintf(fp, "Box %d: X: %d Y: %d\n", i, boxes[i].location.x, boxes[i].location.y);
 	}
+	
+	fprintf(fp, "\n");
 	
 	for(int i = 0; i < numBoxes; ++i){
 		fprintf(fp, "Robot %d: X: %d Y: %d Destination: %d\n", i, robots[i].location.x, robots[i].location.y, i);
@@ -426,7 +430,7 @@ DoorInfo createDoor(){
 	int doorX = GenerateRandomValue(0, numCols-1);
 	int doorY = GenerateRandomValue(0, numRows-1);
 	
-	while(!alreadyExist(doorX, doorY)){
+	while(alreadyExist(doorX, doorY)){
 		
 		doorX = GenerateRandomValue(0, numCols);
 		doorY = GenerateRandomValue(0, numRows);
@@ -438,18 +442,20 @@ DoorInfo createDoor(){
 }
 
 bool alreadyExist(int x, int y){
+
+	printf("In AE, %d, %d, %d\n", doors.size(), boxes.size(), robots.size());
 	
-	for(int i = 0; i < doors.size(); ++i){
+	for(unsigned int i = 0; i < doors.size(); ++i){
 		if(doors[i].location.x == x && doors[i].location.y == y)
 			return true;
 	}
 	
-	for(int i = 0; i < boxes.size(); ++i){
+	for(unsigned int i = 0; i < boxes.size(); ++i){
 		if(boxes[i].location.x == x && boxes[i].location.y == y)
 			return true;
 	}
 	
-	for(int i = 0; i < robots.size(); ++i){
+	for(unsigned int i = 0; i < robots.size(); ++i){
 		if(robots[i].location.x == x && robots[i].location.y == y)
 			return true;
 	}
@@ -468,7 +474,7 @@ BoxInfo createBox(){
 	int boxX = GenerateRandomValue(1, numCols-2);
 	int boxY = GenerateRandomValue(1, numRows-2);
 	
-	while(!alreadyExist(boxX, boxY)){
+	while(alreadyExist(boxX, boxY)){
 		boxX = GenerateRandomValue(1, numCols-2);
 		boxY = GenerateRandomValue(1, numRows-2);
 	}
@@ -489,7 +495,7 @@ RobotInfo createRobot(int index){
 	int robotX = GenerateRandomValue(0, numCols-1);
 	int robotY = GenerateRandomValue(0, numRows-1);
 	
-	while(!alreadyExist(robotX, robotY)){
+	while(alreadyExist(robotX, robotY)){
 		robotX = GenerateRandomValue(0, numCols-1);
 		robotY = GenerateRandomValue(0, numRows-1);
 	}
@@ -497,8 +503,8 @@ RobotInfo createRobot(int index){
 	robot.end = false;
 	robot.index = index;
 	robot.location = {robotX, robotY};
-	robot.box = boxes[index];
-	robot.door = doors[index];
+	robot.box = &boxes[index];
+	robot.door = &doors[index];
 	
 	return robot;
 
@@ -517,17 +523,19 @@ int GenerateRandomValue(int start, int end){
 /** The main function that runs the robot's code.
 	@param info The struct of info for the robot to use.
 */
-void* robotThreadFunc(RobotInfo info){
+void* robotThreadFunc(RobotInfo &info){
 
 	
 	// Keep going until the box reaches the goal/door.
-	while(!boxAtEnd(info.box, info.door)){
+	while(!boxAtEnd(*info.box, *info.door)){
 		
 		// Choose which direction to push the box in next.
 		info.pushDirection = chooseNextPush(info);
 		
 		// Keep moving until the robot reaches the right spot to push the box.
 		while(!ableToPush(info)){
+		
+			printf("Robot %d at x=%d y=%d\n", info.index, info.location.x, info.location.y);
 			
 			info.moveDirection = chooseMovement(info);
 			move(info);
@@ -579,9 +587,9 @@ Point displacementBetweenPoints(Point p1, Point p2)
 	@param info The struct of robot info to use to check.
 	@return The direction that the box needs to be pushed in next.
 */
-Direction chooseNextPush(RobotInfo info){
+Direction chooseNextPush(RobotInfo &info){
 
-	Point distanceToMoveBox = displacementBetweenPoints(info.door.location, info.box.location);
+	Point distanceToMoveBox = displacementBetweenPoints(info.door->location, info.box->location);
 
 	if(distanceToMoveBox.x != 0){
 		return findXOrientation(distanceToMoveBox.x);
@@ -623,7 +631,7 @@ Direction findYOrientation(int y)
 	@param info The robot info struct to use to choose movement.
 	@return The next direction to move in.
 */
-Direction chooseMovement(RobotInfo info){
+Direction chooseMovement(RobotInfo &info){
 	
 	//variables to store the location to to move to
 	int destX, destY;
@@ -632,31 +640,29 @@ Direction chooseMovement(RobotInfo info){
 	//set the destination of the push
 	switch(info.pushDirection){
 		case NORTH: 
-			destX = info.box.location.x;
-			destY = info.box.location.y+1;
+			destX = info.box->location.x;
+			destY = info.box->location.y+1;
 			break;
 		case SOUTH:
-			destX = info.box.location.x;
-			destY = info.box.location.y-1;
+			destX = info.box->location.x;
+			destY = info.box->location.y-1;
 			break;
 		case WEST:
-			destX = info.box.location.x+1;
-			destY = info.box.location.y;
+			destX = info.box->location.x+1;
+			destY = info.box->location.y;
 			break;
 		case EAST:
-			destX = info.box.location.x-1;
-			destY = info.box.location.y;
+			destX = info.box->location.x-1;
+			destY = info.box->location.y;
 			break;
 		default :
 			break;
 	}
 	
-	Direction destDir;
-	
 	switch(info.pushDirection){
 		case NORTH:
 		case SOUTH:
-			if(info.location.x == info.box.location.x)
+			if(info.location.x == info.box->location.x)
 				return WEST;
 			else{
 				if(destY != info.location.y){
@@ -667,28 +673,28 @@ Direction chooseMovement(RobotInfo info){
 				}
 				else{
 					if(info.location.x < destX)
-						destDir = EAST;
+						return EAST;
 					else
-						destDir = WEST;
+						return WEST;
 				}
 			}
 			break;
 		case WEST:
 		case EAST:
-			if(info.location.y == info.box.location.y)
+			if(info.location.y == info.box->location.y)
 				return NORTH;
 			else{
 				if(destX != info.location.x){
 					if(info.location.x < destX)
-						destDir = EAST;
+						return EAST;
 					else
-						destDir = WEST;
+						return WEST;
 				}
 				else{
 					if(info.location.y < destY)
-						destDir = SOUTH;
+						return SOUTH;
 					else
-						destDir = NORTH;
+						return NORTH;
 				}
 			}
 			break;
@@ -705,48 +711,35 @@ Direction chooseMovement(RobotInfo info){
 	@param info The robot info struct used to check.
 	@return Whether or not the robot is in place to push.
 */
-bool ableToPush(RobotInfo info){
-	// TODO check if in position to push box.
+bool ableToPush(RobotInfo &info){
+	
 	switch(info.pushDirection)
 	{
 		case NORTH:
 			//If the box is not on the top row and the robot is below it
-			if(info.box.location.y != numRows -1 && info.location.y +1 == info.box.location.y)
-			{
-				return true;
-			}
-			break;
+			return info.box->location.y != 0 && info.location.y-1 == info.box->location.y 
+						&& info.location.x == info.box->location.x;
 		case EAST:
 			//If the box is not on the right side and the robot is to the left of it
-			if(info.box.location.x != numCols -1 && info.location.x +1 == info.box.location.x)
-			{
-				return true;
-			}
-			break;
+			return info.box->location.x != numCols-1 && info.location.x+1 == info.box->location.x
+						&& info.location.y == info.box->location.y;
 		case SOUTH:
 			//If the box is not on the top row and the robot is below it
-			if(info.box.location.y != 0 && info.location.y -1 == info.box.location.y)
-			{
-				return true;
-			}
-			break;
+			return info.box->location.y != numRows-1 && info.location.y+1 == info.box->location.y 
+						&& info.location.x == info.box->location.x;
 		case WEST:
 			//If the box is not on the left side and the robot is to the right of it
-			if(info.box.location.x != 0 && info.location.x -1 == info.box.location.x)
-			{
-				return true;
-			}
-			break;
+			return info.box->location.x != 0 && info.location.x-1 == info.box->location.x
+						&& info.location.y == info.box->location.y;
 		default :
-			break;	
+			return false;
 	}
-	return false;
 }
 
 /** This function moves the robot by one square.
 	@param info The robot info struct to be moved.
 */
-void move(RobotInfo info){
+void move(RobotInfo &info){
 	// TODO move -> Moved/Updated some of Sam's code here should be acceptable - Matt :-)
 	switch (info.moveDirection)
 	{
@@ -772,24 +765,24 @@ void move(RobotInfo info){
 /** This function moves the robot, and pushes a box with it.
 	@param info The robot info struct to be pushed, containing the box to be pushed as well.
 */
-void push(RobotInfo info){
+void push(RobotInfo &info){
 	// TODO push -> Again simple updates to Sam's code but adding the displacement of the box as well - Matt :-)
 	switch (info.pushDirection){
 		
 		case NORTH:
-			info.box.location.y--;
+			info.box->location.y--;
 			info.location.y--;
 			break;
 		case SOUTH:
-			info.box.location.y++;
+			info.box->location.y++;
 			info.location.y++;
 			break;
 		case EAST:
-			info.box.location.x++;
+			info.box->location.x++;
 			info.location.x++;
 			break;
 		case WEST:
-			info.box.location.x--;
+			info.box->location.x--;
 			info.location.x--;
 			break;
 		default:
