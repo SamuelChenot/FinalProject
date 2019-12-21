@@ -560,8 +560,6 @@ void* robotThreadFunc(RobotInfo &info){
 		
 		// Keep moving until the robot reaches the right spot to push the box.
 		while(!ableToPush(info)){
-		
-			printf("Robot %d at x=%d y=%d\n", info.index, info.location.x, info.location.y);
 			
 			info.moveDirection = chooseMovement(info);
 			move(info);
@@ -644,8 +642,8 @@ Direction findXOrientation(int x)
 */
 Direction findYOrientation(int y)
 {
-	if(y > 0) return SOUTH;
-	else if(y < 0) return NORTH;
+	if(y < 0) return SOUTH;
+	else if(y > 0) return NORTH;
 
 	//Should never reach this return
 	return NUM_TRAVEL_DIRECTIONS;
@@ -666,11 +664,11 @@ Direction chooseMovement(RobotInfo &info){
 	switch(info.pushDirection){
 		case NORTH: 
 			destX = info.box->location.x;
-			destY = info.box->location.y+1;
+			destY = info.box->location.y-1;
 			break;
 		case SOUTH:
 			destX = info.box->location.x;
-			destY = info.box->location.y-1;
+			destY = info.box->location.y+1;
 			break;
 		case WEST:
 			destX = info.box->location.x+1;
@@ -688,14 +686,14 @@ Direction chooseMovement(RobotInfo &info){
 	switch(info.pushDirection){
 		case NORTH:
 		case SOUTH:
-			if(info.location.x == info.box->location.x)
+			if(info.location.x == info.box->location.x && info.location.y != destY)
 				return WEST;
 			else{
 				if(destY != info.location.y){
 					if(info.location.y < destY)
-						return SOUTH;
-					else
 						return NORTH;
+					else
+						return SOUTH;
 				}
 				else{
 					if(info.location.x < destX)
@@ -706,7 +704,7 @@ Direction chooseMovement(RobotInfo &info){
 			}
 		case WEST:
 		case EAST:
-			if(info.location.y == info.box->location.y)
+			if(info.location.y == info.box->location.y && info.location.x != destX)
 				return NORTH;
 			else{
 				if(destX != info.location.x){
@@ -717,9 +715,9 @@ Direction chooseMovement(RobotInfo &info){
 				}
 				else{
 					if(info.location.y < destY)
-						return SOUTH;
-					else
 						return NORTH;
+					else
+						return SOUTH;
 				}
 			}
 		default : 
@@ -740,7 +738,7 @@ bool ableToPush(RobotInfo &info){
 	{
 		case NORTH:
 			//If the box is not on the top row and the robot is below it
-			return info.box->location.y != 0 && info.location.y-1 == info.box->location.y 
+			return info.box->location.y != numRows-1 && info.location.y+1 == info.box->location.y 
 						&& info.location.x == info.box->location.x;
 		case EAST:
 			//If the box is not on the right side and the robot is to the left of it
@@ -748,7 +746,7 @@ bool ableToPush(RobotInfo &info){
 						&& info.location.y == info.box->location.y;
 		case SOUTH:
 			//If the box is not on the top row and the robot is below it
-			return info.box->location.y != numRows-1 && info.location.y+1 == info.box->location.y 
+			return info.box->location.y != 0 && info.location.y-1 == info.box->location.y 
 						&& info.location.x == info.box->location.x;
 		case WEST:
 			//If the box is not on the left side and the robot is to the right of it
@@ -767,10 +765,10 @@ void move(RobotInfo &info){
 	switch (info.moveDirection)
 	{
 		case NORTH:
-			info.location.y--;
+			info.location.y++;
 			break;
 		case SOUTH:
-			info.location.y++;
+			info.location.y--;
 			break;
 		case EAST:
 			info.location.x++;
@@ -793,12 +791,12 @@ void push(RobotInfo &info){
 	switch (info.pushDirection){
 		
 		case NORTH:
-			info.box->location.y--;
-			info.location.y--;
-			break;
-		case SOUTH:
 			info.box->location.y++;
 			info.location.y++;
+			break;
+		case SOUTH:
+			info.box->location.y--;
+			info.location.y--;
 			break;
 		case EAST:
 			info.box->location.x++;
