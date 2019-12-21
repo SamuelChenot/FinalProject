@@ -691,7 +691,7 @@ Direction chooseMovement(RobotInfo info){
 */
 bool ableToPush(RobotInfo info){
 	// TODO check if in position to push box.
-	switch(info.direction)
+	switch(info.pushDirection)
 	{
 		case NORTH:
 			//If the box is not on the top row and the robot is below it
