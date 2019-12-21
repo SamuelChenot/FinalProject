@@ -91,6 +91,8 @@ RobotInfo createRobot(int id);
 int GenerateRandomValue(int start, int end);
 void* robotThreadFunc(RobotInfo info);
 bool boxAtEnd(BoxInfo box, DoorInfo door);
+bool alreadyExist(int x, int y);
+char getDirectionChar(Direction dir);
 Point displacementBetweenPoints(Point p1, Point p2);
 Direction chooseNextPush(RobotInfo info);
 Direction findXOrientation(int x);
@@ -99,6 +101,7 @@ Direction chooseMovement(RobotInfo info);
 bool ableToPush(RobotInfo info);
 void move(RobotInfo info);
 void push(RobotInfo info);
+void writeFileHeader();
 
 
 //==================================================================================
@@ -309,7 +312,7 @@ void cleanupGridAndLists(void)
 //
 //==================================================================================
 
-#define FILE_NAME robotSimulOut.txt
+#define FILE_NAME robotSimulOut.txt;
 
 typedef enum MovementType{
 	MOVE,
@@ -408,6 +411,9 @@ char getDirectionChar(Direction dir){
 			return 'W';
 		case EAST:
 			return 'E';
+		// Should never reach this case
+		default :
+			return 'F';
 	}
 }
 
@@ -515,7 +521,7 @@ void* robotThreadFunc(RobotInfo info){
 
 	
 	// Keep going until the box reaches the goal/door.
-	while(!boxAtEnd()){
+	while(!boxAtEnd(info.box, info.door)){
 		
 		// Choose which direction to push the box in next.
 		info.pushDirection = chooseNextPush(info);
@@ -594,7 +600,8 @@ Direction findXOrientation(int x)
 	if(x > 0) return EAST;
 	else if(x < 0) return WEST;
 
-	return;
+	//Should never reach this return
+	return NUM_TRAVEL_DIRECTIONS;
 }
 
 /** This function finds the push direction for a given Y displacement.
@@ -606,7 +613,8 @@ Direction findYOrientation(int y)
 	if(y > 0) return SOUTH;
 	else if(y < 0) return NORTH;
 
-	return;
+	//Should never reach this return
+	return NUM_TRAVEL_DIRECTIONS;
 }
 
 
@@ -638,6 +646,8 @@ Direction chooseMovement(RobotInfo info){
 		case EAST:
 			destX = info.box.location.x-1;
 			destY = info.box.location.y;
+			break;
+		default :
 			break;
 	}
 	
@@ -682,7 +692,13 @@ Direction chooseMovement(RobotInfo info){
 				}
 			}
 			break;
+		// Should never reach this case
+		default : 
+			break;
 	}
+
+	// Should never reach this line
+	return NUM_TRAVEL_DIRECTIONS;
 }
 
 /** A function that checks if the robot is in place to push the box.
@@ -721,6 +737,8 @@ bool ableToPush(RobotInfo info){
 				return true;
 			}
 			break;
+		default :
+			break;	
 	}
 	return false;
 }
