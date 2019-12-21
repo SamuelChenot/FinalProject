@@ -54,6 +54,7 @@ typedef struct RobotInfo{
 	pthread_t	threadID;
 	/** The index of the robot. */
 	unsigned int index;
+
 	
 	/** The next direction the robot wants to move in. */
 	Direction moveDirection;
@@ -71,7 +72,7 @@ typedef struct RobotInfo{
 	
 	/** The door that the box needs to be pushed to. */
 	DoorInfo door;
-	
+
 } RobotInfo;
 
 //==================================================================================
@@ -81,6 +82,7 @@ void displayGridPane(void);
 void displayStatePane(void);
 void initializeApplication(void);
 void cleanupGridAndLists(void);
+
 
 // Our function prototypes
 DoorInfo createDoor();
@@ -97,6 +99,7 @@ Direction chooseMovement(RobotInfo info);
 bool ableToPush(RobotInfo info);
 void move(RobotInfo info);
 void push(RobotInfo info);
+
 
 //==================================================================================
 //	Application-level global variables
@@ -142,7 +145,7 @@ vector<DoorInfo> doors;
 //==================================================================================
 
 void displayGridPane(void)
-{	
+{
 	//	This is OpenGL/glut magic.  Don't touch
 	glutSetWindow(gSubwindow[GRID_PANE]);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -151,6 +154,7 @@ void displayGridPane(void)
 
 	glTranslatef(0, GRID_PANE_HEIGHT, 0);
 	glScalef(1.f, -1.f, 1.f);
+
 	
 	//can touch
 
@@ -160,14 +164,14 @@ void displayGridPane(void)
 	{
 		//	here I would test if the robot thread is still live
 		//				   row		 column	   row	   column
-		drawRobotAndBox(i, robots[i].location.y, robots[i].location.x, 
+		drawRobotAndBox(i, robots[i].location.y, robots[i].location.x,
 						boxes[i].location.y, boxes[i].location.x, i);
 	}
 
 	for (int i=0; i<numDoors; i++)
 	{
 		//	here I would test if the robot thread is still alive
-		//				row				column	
+		//				row				column
 		drawDoor(i, doors[i].location.y, doors[i].location.x);
 	}
 
@@ -177,7 +181,7 @@ void displayGridPane(void)
 
 	//	This is OpenGL/glut magic.  Don't touch
 	glutSwapBuffers();
-	
+
 	glutSetWindow(gMainWindow);
 }
 
@@ -207,13 +211,15 @@ void displayStatePane(void)
 	//	You *must* synchronize this call.
 	//
 	//---------------------------------------------------------
+
 	
+
 	drawState(numMessages, message);
-	
-	
+
+
 	//	This is OpenGL/glut magic.  Don't touch
 	glutSwapBuffers();
-	
+
 	glutSetWindow(gMainWindow);
 }
 
@@ -225,7 +231,7 @@ void speedupRobots(void)
 {
 	//	decrease sleep time by 20%, but don't get too small
 	int newSleepTime = (8 * robotSleepTime) / 10;
-	
+
 	if (newSleepTime > MIN_SLEEP_TIME)
 	{
 		robotSleepTime = newSleepTime;
@@ -264,18 +270,18 @@ int main(int argc, char** argv)
 	//	function because that function passes them to glutInit, the required call
 	//	to the initialization of the glut library.
 	initializeFrontEnd(argc, argv, displayGridPane, displayStatePane);
-	
+
 	//	Now we can do application-level initialization
 	initializeApplication();
 
 	//	Now we enter the main loop of the program and to a large extend
-	//	"lose control" over its execution.  The callback functions that 
+	//	"lose control" over its execution.  The callback functions that
 	//	we set up earlier will be called when the corresponding event
 	//	occurs
 	glutMainLoop();
-	
+
 	cleanupGridAndLists();
-	
+
 	//	This will probably never be executed (the exit point will be in one of the
 	//	call back functions).
 	return 0;
@@ -319,10 +325,11 @@ void initializeApplication(void){
 	grid = (int**) malloc(numRows * sizeof(int*));
 	for (int i=0; i<numRows; i++)
 		grid[i] = (int*) malloc(numCols * sizeof(int));
-	
+
 	message = (char**) malloc(MAX_NUM_MESSAGES*sizeof(char*));
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		message[k] = (char*) malloc((MAX_LENGTH_MESSAGE+1)*sizeof(char));
+
 		
 	
 	// Seed the pseudo-random generator
@@ -420,7 +427,7 @@ DoorInfo createDoor(){
 	}
 	
 	door.location = {doorX, doorY};
-	
+
 	return door;
 }
 
@@ -448,6 +455,7 @@ bool alreadyExist(int x, int y){
 	@return The info struct for the new box.
 */
 BoxInfo createBox(){
+
 	
 	BoxInfo box;
 
@@ -487,6 +495,7 @@ RobotInfo createRobot(int index){
 	robot.door = doors[index];
 	
 	return robot;
+
 }
 
 /** Function to generate a random number between start and end INCLUSIVELY
@@ -503,6 +512,7 @@ int GenerateRandomValue(int start, int end){
 	@param info The struct of info for the robot to use.
 */
 void* robotThreadFunc(RobotInfo info){
+
 	
 	// Keep going until the box reaches the goal/door.
 	while(!boxAtEnd()){
@@ -523,7 +533,7 @@ void* robotThreadFunc(RobotInfo info){
 	
 	// Make sure to update to tell the main program that the robot is done.
 	info.end = true;
-	
+
 	return nullptr;
 }
 
@@ -537,14 +547,17 @@ bool boxAtEnd(BoxInfo box, DoorInfo door){
 	Point displacement = displacementBetweenPoints(box.location, door.location);
 	
 	// If that displacement is 0, this will evaluate to true.
+
 	return (displacement.x == 0) && (displacement.y == 0);
 }
 
 
 /** Returns the x,y displacements required to move a box to a door
+
  * @param p1 x, y coordinates of the first point to be checked 
  * @param p2 x, y coordinates of the second point to be checked 
  * @return The X and Y displacement between the two points.
+
  */
 Point displacementBetweenPoints(Point p1, Point p2)
 {
@@ -580,7 +593,7 @@ Direction findXOrientation(int x)
 {
 	if(x > 0) return EAST;
 	else if(x < 0) return WEST;
-	
+
 	return;
 }
 
@@ -592,9 +605,10 @@ Direction findYOrientation(int y)
 {
 	if(y > 0) return SOUTH;
 	else if(y < 0) return NORTH;
-	
+
 	return;
 }
+
 
 /** This function chooses which direction the robot should move in 
 	to reach the correct side of the box.
@@ -677,6 +691,38 @@ Direction chooseMovement(RobotInfo info){
 */
 bool ableToPush(RobotInfo info){
 	// TODO check if in position to push box.
+	switch(info.direction)
+	{
+		case NORTH:
+			//If the box is not on the top row and the robot is below it
+			if(info.box.location.y != numRows -1 && info.location.y +1 == info.box.location.y)
+			{
+				return true;
+			}
+			break;
+		case EAST:
+			//If the box is not on the right side and the robot is to the left of it
+			if(info.box.location.x != numCols -1 && info.location.x +1 == info.box.location.x)
+			{
+				return true;
+			}
+			break;
+		case SOUTH:
+			//If the box is not on the top row and the robot is below it
+			if(info.box.location.y != 0 && info.location.y -1 == info.box.location.y)
+			{
+				return true;
+			}
+			break;
+		case WEST:
+			//If the box is not on the left side and the robot is to the right of it
+			if(info.box.location.x != 0 && info.location.x -1 == info.box.location.x)
+			{
+				return true;
+			}
+			break;
+	}
+	return false;
 }
 
 /** This function moves the robot by one square.
@@ -701,7 +747,7 @@ void move(RobotInfo info){
 		default:
 			break;
 	}
-	
+
 	writeToFile(info, MOVE);
 }
 
@@ -734,4 +780,3 @@ void push(RobotInfo info){
 	
 	writeToFile(info, PUSH);
 }
-
