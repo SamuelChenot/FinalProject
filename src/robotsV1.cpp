@@ -314,6 +314,8 @@ void cleanupGridAndLists(void)
 
 #define FILE_NAME "robotSimulOut.txt"
 
+/** An enum for the type of movement the robot can make.
+*/
 typedef enum MovementType{
 	MOVE,
 	PUSH
@@ -332,62 +334,70 @@ void initializeApplication(void){
 	message = (char**) malloc(MAX_NUM_MESSAGES*sizeof(char*));
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		message[k] = (char*) malloc((MAX_LENGTH_MESSAGE+1)*sizeof(char));
-
-		
+	
 	
 	// Seed the pseudo-random generator
 	startTime = time(NULL);
 	srand((unsigned int) startTime);
 	
-	// Build the string for the file header.
-	
-	
+	// Create all the doors.
 	for(int i = 0; i < numDoors; ++i){
 		doors.push_back(createDoor());
 	}
 	
+	// Create all the boxes.
 	for(int i = 0; i < numBoxes; ++i){
 		boxes.push_back(createBox());
 	}
 	
+	// Create all the robots.
 	for(int i = 0; i < numBoxes; ++i){
 		robots.push_back(createRobot(i));
 	}
 	
 	writeFileHeader();
 	
+	// Start the robots.
 	for(int i = 0; i < numBoxes; ++i){
 		robotThreadFunc(robots[i]);
 	}
 }
 
+/** This function writes the top part of the output file.
+*/
 void writeFileHeader(){
 	
+	// Open the file.
 	FILE* fp = fopen(FILE_NAME, "w");
 	
+	// Print the arguments we've recieved.
 	fprintf(fp, "Rows: %d Cols: %d Boxes: %d Doors: %d\n\n", numRows, numCols, numBoxes, numDoors);
 	
+	// Print all the doors' initial locations.
 	for(int i = 0; i < numDoors; ++i){
 		fprintf(fp, "Door %d: X: %d Y: %d\n", i, doors[i].location.x, doors[i].location.y);
 	}
-	
 	fprintf(fp, "\n");
 	
+	// Print all the boxes' initial locations.
 	for(int i = 0; i < numBoxes; ++i){
 		fprintf(fp, "Box %d: X: %d Y: %d\n", i, boxes[i].location.x, boxes[i].location.y);
 	}
-	
 	fprintf(fp, "\n");
 	
+	// Print all the robots' initial locations, and which door they are connected to.
 	for(int i = 0; i < numBoxes; ++i){
 		fprintf(fp, "Robot %d: X: %d Y: %d Destination: %d\n", i, robots[i].location.x, robots[i].location.y, i);
 	}
-	
 	fprintf(fp, "\n");
 	
 	fclose(fp);
 }
 
+/** This function writes a single type of movement to a file, be it a push or a normal move.
+	@param info The robot's info struct.
+	@param type The type of movement made.
+*/
 void writeToFile(RobotInfo info, MovementType type){
 	
 	FILE* fp = fopen(FILE_NAME, "a");
@@ -405,6 +415,10 @@ void writeToFile(RobotInfo info, MovementType type){
 	fclose(fp);
 }
 
+/** A simple function to turn a directional move into the character ir represents.
+	@param dir A direction of movement.
+	@return The letter that refers to that direction, N, S, W, or E.
+*/
 char getDirectionChar(Direction dir){
 	switch(dir){
 		case NORTH:
@@ -427,9 +441,11 @@ char getDirectionChar(Direction dir){
 DoorInfo createDoor(){
 	DoorInfo door;
 	
+	// Randomly generate a location.
 	int doorX = GenerateRandomValue(0, numCols-1);
 	int doorY = GenerateRandomValue(0, numRows-1);
 	
+	// Loop until it is a unique location.
 	while(alreadyExist(doorX, doorY)){
 		
 		doorX = GenerateRandomValue(0, numCols);
@@ -441,20 +457,26 @@ DoorInfo createDoor(){
 	return door;
 }
 
+/** This function checks if a door, box, or robot already exists at the given location.
+	@param x The x position of a location.
+	@param y The y potition of a location.
+	@return Whether or not that position is already occupied.
+*/
 bool alreadyExist(int x, int y){
-
-	printf("In AE, %d, %d, %d\n", doors.size(), boxes.size(), robots.size());
 	
+	// Check all the doors.
 	for(unsigned int i = 0; i < doors.size(); ++i){
 		if(doors[i].location.x == x && doors[i].location.y == y)
 			return true;
 	}
 	
+	// Check all the boxes.
 	for(unsigned int i = 0; i < boxes.size(); ++i){
 		if(boxes[i].location.x == x && boxes[i].location.y == y)
 			return true;
 	}
 	
+	// Check all the robots.
 	for(unsigned int i = 0; i < robots.size(); ++i){
 		if(robots[i].location.x == x && robots[i].location.y == y)
 			return true;
@@ -468,12 +490,13 @@ bool alreadyExist(int x, int y){
 */
 BoxInfo createBox(){
 
-	
 	BoxInfo box;
-
+	
+	// Randomly generate a location.
 	int boxX = GenerateRandomValue(1, numCols-2);
 	int boxY = GenerateRandomValue(1, numRows-2);
 	
+	// Loop until it is a unique location.
 	while(alreadyExist(boxX, boxY)){
 		boxX = GenerateRandomValue(1, numCols-2);
 		boxY = GenerateRandomValue(1, numRows-2);
@@ -492,14 +515,17 @@ RobotInfo createRobot(int index){
 
 	RobotInfo robot;
 
+	// Randomly generate a location.
 	int robotX = GenerateRandomValue(0, numCols-1);
 	int robotY = GenerateRandomValue(0, numRows-1);
 	
+	// Loop until it is a unique location.
 	while(alreadyExist(robotX, robotY)){
 		robotX = GenerateRandomValue(0, numCols-1);
 		robotY = GenerateRandomValue(0, numRows-1);
 	}
 
+	// Set all of the other robot values.
 	robot.end = false;
 	robot.index = index;
 	robot.location = {robotX, robotY};
@@ -636,8 +662,7 @@ Direction chooseMovement(RobotInfo &info){
 	//variables to store the location to to move to
 	int destX, destY;
 	
-	//depending on the direction of the push
-	//set the destination of the push
+	//Set the destination to move to for a push.
 	switch(info.pushDirection){
 		case NORTH: 
 			destX = info.box->location.x;
@@ -659,6 +684,7 @@ Direction chooseMovement(RobotInfo &info){
 			break;
 	}
 	
+	// Find the movement direction based on the desired push direction.
 	switch(info.pushDirection){
 		case NORTH:
 		case SOUTH:
@@ -678,7 +704,6 @@ Direction chooseMovement(RobotInfo &info){
 						return WEST;
 				}
 			}
-			break;
 		case WEST:
 		case EAST:
 			if(info.location.y == info.box->location.y)
@@ -697,14 +722,12 @@ Direction chooseMovement(RobotInfo &info){
 						return NORTH;
 				}
 			}
-			break;
-		// Should never reach this case
 		default : 
-			break;
+			// Should never reach this line
+			return NUM_TRAVEL_DIRECTIONS;
 	}
 
-	// Should never reach this line
-	return NUM_TRAVEL_DIRECTIONS;
+	
 }
 
 /** A function that checks if the robot is in place to push the box.
