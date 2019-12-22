@@ -168,6 +168,7 @@ void displayGridPane(void)
 	glTranslatef(0, GRID_PANE_HEIGHT, 0);
 	glScalef(1.f, -1.f, 1.f);
 	
+	// Update the number of live threads.
 	numLiveThreads = 0;
 	pthread_mutex_lock(&robotLock);
 	for(int i = 0; i < numBoxes; ++i){
@@ -358,6 +359,7 @@ void initializeApplication(void){
 	startTime = time(NULL);
 	srand((unsigned int) startTime);
 	
+	// Initialize all of the locks.
 	pthread_mutex_init(&outfileLock, NULL);
 	pthread_mutex_init(&robotLock, NULL);
 	pthread_mutex_init(&boxLock, NULL);
@@ -594,7 +596,8 @@ int GenerateRandomValue(int start, int end){
 }
 
 /** The main function that runs the robot's code.
-	@param info The struct of info for the robot to use.
+	@param voidInfo The struct of info for the robot to use in void* form.
+	@return Nothing of importance, as we don't join threads.
 */
 void* robotThreadFunc(void* voidInfo){
 

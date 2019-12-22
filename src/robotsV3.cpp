@@ -182,6 +182,7 @@ void displayGridPane(void)
 	glTranslatef(0, GRID_PANE_HEIGHT, 0);
 	glScalef(1.f, -1.f, 1.f);
 	
+	// Update the number of live threads.
 	numLiveThreads = 0;
 	pthread_mutex_lock(&robotLock);
 	for(int i = 0; i < numBoxes; ++i){
@@ -195,10 +196,13 @@ void displayGridPane(void)
 		//	here I would test if the robot thread is still live
 		//				   row		 column	   row	   column
 		pthread_mutex_lock(&robotLock);
-		pthread_mutex_lock(&boxLock);
-		drawRobotAndBox(i, robots[i]->location.y, robots[i]->location.x,
+		
+		//if(!robots[i]->end){
+			pthread_mutex_lock(&boxLock);
+			drawRobotAndBox(i, robots[i]->location.y, robots[i]->location.x,
 						boxes[i].location.y, boxes[i].location.x, i);
-		pthread_mutex_unlock(&boxLock);
+			pthread_mutex_unlock(&boxLock);
+		//}
 		pthread_mutex_unlock(&robotLock);
 	}
 
@@ -372,11 +376,13 @@ void initializeApplication(void){
 	startTime = time(NULL);
 	srand((unsigned int) startTime);
 	
+	// Initialize all of the locks.
 	pthread_mutex_init(&outfileLock, NULL);
 	pthread_mutex_init(&robotLock, NULL);
 	pthread_mutex_init(&boxLock, NULL);
 	pthread_mutex_init(&doorLock, NULL);
 	
+	// Initialize the locks for the grid.
 	gridLocks = (pthread_mutex_t**) calloc(numRows, sizeof(pthread_mutex_t*));
 	for (int i=0; i<numRows; i++){
 		gridLocks[i] = (pthread_mutex_t*) calloc(numCols, sizeof(pthread_mutex_t));
@@ -425,7 +431,9 @@ void initializeApplication(void){
 			exit(1);
 		}
 	}
-	pthread_t deadlockPid;
+	
+	// Initialize the deadlock checker thread.
+	/*pthread_t deadlockPid;
 	numLiveThreads = numBoxes;
 	int errCode = pthread_create(&deadlockPid, NULL,
 						deadlockThreadFunc, nullptr);
@@ -433,7 +441,7 @@ void initializeApplication(void){
 	if(errCode != 0){
 		fprintf(stderr, "Deadlock thread could not be created.\n");
 		exit(1);
-	}
+	}*/
 }
 
 /** This function writes the top part of the output file.
@@ -635,7 +643,8 @@ int GenerateRandomValue(int start, int end){
 }
 
 /** The main function that runs the robot's code.
-	@param info The struct of info for the robot to use.
+	@param voidInfo The struct of info for the robot to use in void* form.
+	@return Nothing of importance, as we don't join threads.
 */
 void* robotThreadFunc(void* voidInfo){
 
@@ -669,8 +678,22 @@ void* robotThreadFunc(void* voidInfo){
 	
 	// Make sure to update to tell the main program that the robot is done.
 	pthread_mutex_lock(&robotLock);
+	//pthread_mutex_lock(&boxLock);
 	info->end = true;
+	
+	// Unlock the grid location of the robot and box.
+	/*pthread_mutex_unlock(gridLocks[info->location.y]+info->location.x);
+	pthread_mutex_unlock(gridLocks[info->box->location.y]+info->box->location.x);
+	
+	info->location.x = -1;
+	info->location.y = -1;
+	
+	info->box->location.x = -1;
+	info->box->location.y = -1;
+	pthread_mutex_unlock(&boxLock);*/
 	pthread_mutex_unlock(&robotLock);
+	
+	
 
 	return nullptr;
 }
@@ -890,8 +913,10 @@ void move(RobotInfo* info){
 	
 	pthread_mutex_lock(&robotLock);
 	
+	// Store the old location of the robot.
 	int oldX = info->location.x, oldY = info->location.y;
 	
+	// Find the destination location.
 	switch (info->moveDirection){
 		
 		case NORTH:
@@ -915,16 +940,20 @@ void move(RobotInfo* info){
 	}
 	info->waitingForGrid = true;
 	pthread_mutex_unlock(&robotLock);
-			
+	
+	// Wait for the destination location to be unlocked.
 	pthread_mutex_lock(gridLocks[destY]+destX);
 	pthread_mutex_lock(&robotLock);
 	
 	info->waitingForGrid = false;
 	
+	// Update the robot's location.
 	info->location.x = destX;
 	info->location.y = destY;
 	
 	pthread_mutex_unlock(&robotLock);
+	
+	// Make sure to unlock the old location.
 	pthread_mutex_unlock(gridLocks[oldY]+oldX);
 
 	writeToFile(info, MOVE);
@@ -941,12 +970,15 @@ void push(RobotInfo* info){
 
 	pthread_mutex_lock(&robotLock);
 	
+	// Store the old location of the robot.
 	int oldX = info->location.x, oldY = info->location.y;
 	
 	pthread_mutex_lock(&boxLock);
 	
+	// Store the old location of the box.
 	int oldBoxX = info->box->location.x, oldBoxY = info->box->location.y;
 	
+	// Find the destination of the box after the push.
 	switch (info->pushDirection){
 		
 		case NORTH:
@@ -974,6 +1006,7 @@ void push(RobotInfo* info){
 	info->waitingForGrid = true;
 	pthread_mutex_unlock(&robotLock);
 	
+	// Wait for the box's destination to be unlocked.
 	pthread_mutex_lock(gridLocks[destY]+destX);
 	pthread_mutex_lock(&robotLock);
 	
@@ -981,6 +1014,7 @@ void push(RobotInfo* info){
 	
 	pthread_mutex_lock(&boxLock);
 	
+	// Move the box and the robot.
 	info->box->location.x = destX;
 	info->box->location.y = destY;
 	
@@ -989,6 +1023,8 @@ void push(RobotInfo* info){
 	
 	pthread_mutex_unlock(&boxLock);
 	pthread_mutex_unlock(&robotLock);
+	
+	// Unlock the previous position of the robot (the only location freed up)
 	pthread_mutex_unlock(gridLocks[oldY]+oldX);
 	
 	
@@ -997,29 +1033,41 @@ void push(RobotInfo* info){
 	usleep(robotSleepTime);
 }
 
+/** The function for the deadlock thread to check for deadlock. (Not working yet).
+	@param args The arguments that the function takes (not used)
+	@return Nothing, as we don't join threads.
+*/
 void* deadlockThreadFunc(void* args){
-
-	std::cout << "HERE" << std::endl;
-	bool hasDeadlock = false;
+	
 	while(numLiveThreads > 0){
-		std::cout << "HERE" << std::endl;
-
 		
+		bool hasDeadlock = false;
 		pthread_mutex_lock(&robotLock);
 		
+		// Go through all of the robots except one.
 		for(int i = 0; i < numBoxes-1; ++i){
 			
+			// If that robot has already finished, go to the next one.
+			if(robots[i]->end)
+				continue;
 			
+			// Go through all of the other robots after the current one.
 			for(int j = i+1; j < numBoxes; ++j){
+			
+				// If that robot has already finished, go to the next one.
+				if(robots[j]->end)
+					continue;
+				
+				// If the two robots are in deadlock, break out of the inner loop.
 				if(deadlockExists(robots[i], robots[j])){
 					hasDeadlock = true;
 					break;
 				}
 			}
 			
-			if(hasDeadlock){
+			// Kill the outer robot if it has deadlock.
+			if(hasDeadlock)
 				killRobot(robots[i]);
-			}
 		}
 		
 		pthread_mutex_unlock(&robotLock);
@@ -1031,8 +1079,14 @@ void* deadlockThreadFunc(void* args){
 	return nullptr;
 }
 
+/** Check if deadlock exists between two robots.
+	@param r1 The first robot to check.
+	@param r2 The second robot to check.
+	@return Whether or not there is deadlock between the two.
+*/
 bool deadlockExists(RobotInfo* r1, RobotInfo* r2){
 	
+	// Get the next movement destination of the two robots.
 	Point r1dest = getDest(r1), r2dest = getDest(r2);
 
 	// Check r1 dest agasint r2 location
@@ -1055,9 +1109,15 @@ bool deadlockExists(RobotInfo* r1, RobotInfo* r2){
 	
 }
 
+/** This function gets the destination of a given robot based on its current location
+	and whether it wants to push or move.
+	@param info The info struct for the robot.
+	@return The 2D point of the destination of movement.
+*/
 Point getDest(RobotInfo* info){
 	int destX, destY;
 	if(info->canPush){
+		// Push destination.
 		switch (info->pushDirection){
 		
 			case NORTH:
@@ -1081,8 +1141,8 @@ Point getDest(RobotInfo* info){
 		}
 	}
 	else{
+		// Move destination.
 		switch (info->moveDirection){
-			
 			case NORTH:
 				destX = info->location.x;
 				destY = info->location.y+1;
@@ -1103,23 +1163,30 @@ Point getDest(RobotInfo* info){
 				break;
 		}
 	}
-	
 	Point p = {destX, destY};
 	return p;
 }
 
+/** This function kills a single robot thread, making sure it updates to be 'done'.
+	@param info The info struct of that robot.
+*/
 void killRobot(RobotInfo* info){
 
 	printf("Killing\n");
 	
+	// Make the robot 'end'
 	info->end = true;
 	
-	info->location = {-1, -1};
-	pthread_mutex_unlock(gridLocks[info->location.y]+info->location.x);
-	
-	info->box->location = {-1, -1};
-	pthread_mutex_unlock(gridLocks[info->box->location.y]+info->box->location.x);
-	
+	printf("About to cancel\n");
 	pthread_cancel(info->threadID);
 	
+	// Unlock the robot's current location and move it off the grid.
+	pthread_mutex_unlock(gridLocks[info->location.y]+info->location.x);
+	info->location.x = -1;
+	info->location.y = -1;
+	
+	// Unlock that robot's box's location and move it off the grid.
+	pthread_mutex_unlock(gridLocks[info->box->location.y]+info->box->location.x);
+	info->box->location.x = -1;
+	info->box->location.y = -1;
 }
