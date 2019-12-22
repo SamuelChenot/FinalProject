@@ -426,6 +426,7 @@ void initializeApplication(void){
 		}
 	}
 	pthread_t deadlockPid;
+	numLiveThreads = numBoxes;
 	int errCode = pthread_create(&deadlockPid, NULL,
 						deadlockThreadFunc, nullptr);
 						
@@ -998,13 +999,16 @@ void push(RobotInfo* info){
 
 void* deadlockThreadFunc(void* args){
 
+	std::cout << "HERE" << std::endl;
+	bool hasDeadlock = false;
 	while(numLiveThreads > 0){
+		std::cout << "HERE" << std::endl;
+
 		
 		pthread_mutex_lock(&robotLock);
 		
 		for(int i = 0; i < numBoxes-1; ++i){
 			
-			bool hasDeadlock = false;
 			
 			for(int j = i+1; j < numBoxes; ++j){
 				if(deadlockExists(robots[i], robots[j])){
