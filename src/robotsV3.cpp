@@ -63,6 +63,12 @@ typedef struct RobotInfo{
 	/** The direction that the robot wants to push the box in next. */
 	Direction pushDirection;
 	
+	/** Whether or not the robot is able to push now. */
+	bool canPush;
+	
+	/** Whether or not the robot is waiting on a grid spot. */
+	bool waitingForGrid;
+	
 	/** Whether or not the robot has finished moving the box to the door. */
 	bool end;
 	
@@ -104,6 +110,10 @@ bool ableToPush(RobotInfo* info);
 void move(RobotInfo* info);
 void push(RobotInfo* info);
 void writeFileHeader();
+void* deadlockThreadFunc(void* args);
+void killRobot(RobotInfo* info);
+bool deadlockExists(RobotInfo* r1, RobotInfo* r2);
+Point getDest(RobotInfo* info);
 
 
 //==================================================================================
@@ -415,6 +425,14 @@ void initializeApplication(void){
 			exit(1);
 		}
 	}
+	pthread_t deadlockPid;
+	int errCode = pthread_create(&deadlockPid, NULL,
+						deadlockThreadFunc, nullptr);
+						
+	if(errCode != 0){
+		fprintf(stderr, "Deadlock thread could not be created.\n");
+		exit(1);
+	}
 }
 
 /** This function writes the top part of the output file.
@@ -591,6 +609,8 @@ RobotInfo* createRobot(int index){
 
 	// Set all of the other robot values.
 	robot->end = false;
+	robot->canPush = false;
+	robot->waitingForGrid = false;
 	robot->index = index;
 	
 	pthread_mutex_lock(gridLocks[robotY]+robotX);
@@ -633,12 +653,15 @@ void* robotThreadFunc(void* voidInfo){
 		while(!ableToPush(info)){
 			
 			pthread_mutex_lock(&robotLock);
+			info->canPush = false;
 			info->moveDirection = chooseMovement(info);
 			pthread_mutex_unlock(&robotLock);
 			
 			move(info);
 		}
-		
+		pthread_mutex_lock(&robotLock);
+		info->canPush = true;
+		pthread_mutex_unlock(&robotLock);
 		// Push the box.
 		push(info);
 	}
@@ -889,11 +912,13 @@ void move(RobotInfo* info){
 		default:
 			break;
 	}
-	
+	info->waitingForGrid = true;
 	pthread_mutex_unlock(&robotLock);
 			
 	pthread_mutex_lock(gridLocks[destY]+destX);
 	pthread_mutex_lock(&robotLock);
+	
+	info->waitingForGrid = false;
 	
 	info->location.x = destX;
 	info->location.y = destY;
@@ -944,10 +969,15 @@ void push(RobotInfo* info){
 	}
 		
 	pthread_mutex_unlock(&boxLock);
+	
+	info->waitingForGrid = true;
 	pthread_mutex_unlock(&robotLock);
 	
 	pthread_mutex_lock(gridLocks[destY]+destX);
 	pthread_mutex_lock(&robotLock);
+	
+	info->waitingForGrid = false;
+	
 	pthread_mutex_lock(&boxLock);
 	
 	info->box->location.x = destX;
@@ -964,4 +994,128 @@ void push(RobotInfo* info){
 	writeToFile(info, PUSH);
 	
 	usleep(robotSleepTime);
+}
+
+void* deadlockThreadFunc(void* args){
+
+	while(numLiveThreads > 0){
+		
+		pthread_mutex_lock(&robotLock);
+		
+		for(int i = 0; i < numBoxes-1; ++i){
+			
+			bool hasDeadlock = false;
+			
+			for(int j = i+1; j < numBoxes; ++j){
+				if(deadlockExists(robots[i], robots[j])){
+					hasDeadlock = true;
+					break;
+				}
+			}
+			
+			if(hasDeadlock){
+				killRobot(robots[i]);
+			}
+		}
+		
+		pthread_mutex_unlock(&robotLock);
+		
+		usleep(robotSleepTime);
+		
+	}
+	
+	return nullptr;
+}
+
+bool deadlockExists(RobotInfo* r1, RobotInfo* r2){
+	
+	Point r1dest = getDest(r1), r2dest = getDest(r2);
+
+	// Check r1 dest agasint r2 location
+	if(r2->location.x == r1dest.x && r2->location.y == r1dest.y && r2->waitingForGrid)
+		return true;
+		
+	if(r2->canPush)
+		if(r2->box->location.x == r1dest.x && r2->box->location.y == r1dest.y && r2->waitingForGrid)
+			return true;
+	
+	// Check r2 dest agasint r1 location
+	if(r1->location.x == r2dest.x && r1->location.y == r2dest.y && r1->waitingForGrid)
+		return true;
+		
+	if(r1->canPush)
+		if(r1->box->location.x == r2dest.x && r1->box->location.y == r2dest.y && r1->waitingForGrid)
+			return true;
+	
+	return false;
+	
+}
+
+Point getDest(RobotInfo* info){
+	int destX, destY;
+	if(info->canPush){
+		switch (info->pushDirection){
+		
+			case NORTH:
+				destX = info->box->location.x;
+				destY = info->box->location.y+1;
+				break;
+			case SOUTH:
+				destX = info->box->location.x;
+				destY = info->box->location.y-1;
+				break;
+			case EAST:
+				destX = info->box->location.x+1;
+				destY = info->box->location.y;
+				break;
+			case WEST:
+				destX = info->box->location.x-1;
+				destY = info->box->location.y;
+				break;
+			default:
+				break;
+		}
+	}
+	else{
+		switch (info->moveDirection){
+			
+			case NORTH:
+				destX = info->location.x;
+				destY = info->location.y+1;
+				break;
+			case SOUTH:
+				destX = info->location.x;
+				destY = info->location.y-1;
+				break;
+			case EAST:
+				destX = info->location.x+1;
+				destY = info->location.y;
+				break;
+			case WEST:
+				destX = info->location.x-1;
+				destY = info->location.y;
+				break;
+			default:
+				break;
+		}
+	}
+	
+	Point p = {destX, destY};
+	return p;
+}
+
+void killRobot(RobotInfo* info){
+
+	printf("Killing\n");
+	
+	info->end = true;
+	
+	info->location = {-1, -1};
+	pthread_mutex_unlock(gridLocks[info->location.y]+info->location.x);
+	
+	info->box->location = {-1, -1};
+	pthread_mutex_unlock(gridLocks[info->box->location.y]+info->box->location.x);
+	
+	pthread_cancel(info->threadID);
+	
 }
